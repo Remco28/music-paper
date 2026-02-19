@@ -55,7 +55,16 @@ streamlit run app.py --server.headless true --server.port 8501
 - `Student Simplification Mode` applies preset cleanup.
 - `Advanced Simplification Settings` lets you tune quantization, min note duration, and density threshold.
 
+## Verifying Your Setup
+After installing, run the validation script to confirm everything is in place:
+```
+python scripts/validate_setup.py
+```
+This checks Python version, required packages, and external tools (demucs, basic-pitch, mscore, ffmpeg).
+
 ## Notes
 - No login/authentication in MVP.
 - Processing runs locally after dependencies are installed.
+- The app runs preflight checks on required tools before each pipeline run.
+- Each transcription run produces an isolated set of artifacts and a JSON manifest in the ZIP.
 - If a stage fails, the app displays the command error so issues can be fixed directly.

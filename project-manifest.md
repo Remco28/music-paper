@@ -14,12 +14,13 @@
 - Archived task specs: `comms/tasks/archive/`
 
 ## 3. Code & Config Entrypoints
-- Main Streamlit app: `app.py` (planned)
-- Pipeline logic: `pipeline.py` (planned)
-- Project config/constants: `config.py` (planned)
-- Utility helpers: `utils.py` (planned)
-- Dependencies: `requirements.txt` (planned)
-- Local launcher: `start.bat` (planned)
+- Main Streamlit app: `app.py`
+- Pipeline logic: `pipeline.py`
+- Project config/constants: `config.py`
+- Utility helpers: `utils.py`
+- Dependencies: `requirements.txt`
+- Local launcher: `start.bat`
+- Setup validation: `scripts/validate_setup.py`
 
 ## 4. Delivery Scope Snapshot (MVP)
 - Product: Middle School Concert Band Transcription Assistant (offline/local-first)

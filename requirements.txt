@@ -1,0 +1,8 @@
+# Requires Python 3.11 (basic-pitch dependency chain fails on 3.12+)
+streamlit>=1.40
+pydub
+yt-dlp
+demucs
+basic-pitch
+music21>=9.9.1
+Pillow
