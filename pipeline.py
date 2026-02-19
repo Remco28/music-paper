@@ -262,7 +262,7 @@ def render_pdfs(score_data: dict[str, str | dict[str, str]]) -> dict:
         if not part_xml.exists():
             part_report.append({
                 "name": part_name, "status": "skipped",
-                "reason": "MusicXML file missing", "note_count": 0,
+                "reason": "missing_musicxml", "note_count": 0,
             })
             continue
 
@@ -272,7 +272,7 @@ def render_pdfs(score_data: dict[str, str | dict[str, str]]) -> dict:
         if note_count == 0:
             part_report.append({
                 "name": part_name, "status": "skipped",
-                "reason": "empty (no notes)", "note_count": 0,
+                "reason": "no_notes", "note_count": 0,
             })
             continue
 

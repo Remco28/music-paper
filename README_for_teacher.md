@@ -77,6 +77,9 @@ python scripts/smoke_test.py
 ```
 This performs import checks, config invariant checks, and manifest schema sanity checks.
 
+Troubleshooting guide:
+- `docs/troubleshooting.md`
+
 ## Notes
 - No login/authentication in MVP.
 - Processing runs locally after dependencies are installed.
@@ -84,4 +87,4 @@ This performs import checks, config invariant checks, and manifest schema sanity
 - The app includes a read-only `Diagnostics` panel showing environment context and latest run pointers.
 - Each transcription run produces an isolated set of artifacts and a JSON manifest in the ZIP.
 - The manifest includes selected simplification settings and pipeline metadata (`app_version`, `demucs_model`) for traceability.
-- If a stage fails, the app displays the command error so issues can be fixed directly.
+- If a stage fails, the app displays concise stage-specific guidance with next-step hints.

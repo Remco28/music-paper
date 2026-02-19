@@ -137,3 +137,5 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-19 16:27] [Architect]: REVIEW PASS: Phase-4 implementation accepted after smoke-test path fix and diagnostics panel completion.
 [2026-02-19 16:27] [Architect]: SPEC ARCHIVED: Moved comms/tasks/2026-02-19-phase-4-regression-safety-and-ops.md to archive.
 [2026-02-19 16:27] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-5-output-quality-and-failure-clarity.md.
+
+[2026-02-19 16:29] [Developer]: IMPL DONE (Phase 5): Added actionable part-skip guidance, simplification guardrails, structured stage-level error messaging, and docs/troubleshooting.md.

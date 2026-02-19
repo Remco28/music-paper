@@ -96,6 +96,13 @@ def _preflight_ok() -> bool:
     return all(r["status"] == "pass" for r in st.session_state.preflight)
 
 
+def _show_stage_error(stage: str, exc: Exception, hint: str) -> None:
+    """Render concise stage failure context without verbose traceback."""
+    summary = str(exc).strip().split("\n")[0] or exc.__class__.__name__
+    st.error(f"{stage} failed: {summary}")
+    st.caption(f"Next step: {hint}")
+
+
 def _render_preflight() -> None:
     st.subheader("Environment Check")
     if st.button("Run Preflight Checks", use_container_width=True):
@@ -136,7 +143,11 @@ def _render_input_stage() -> None:
                 st.session_state.source_value = uploaded.name
                 st.success("Audio prepared.")
             except Exception as exc:
-                st.error(str(exc))
+                _show_stage_error(
+                    "Input preparation",
+                    exc,
+                    "Confirm the file is readable and supported (MP3/AAC/WAV/M4A/FLAC), then retry.",
+                )
     else:
         youtube_url = st.text_input("Single-video YouTube URL", placeholder="https://www.youtube.com/watch?v=...")
         if st.button("Use YouTube Audio", type="primary", use_container_width=True):
@@ -150,7 +161,11 @@ def _render_input_stage() -> None:
                 st.session_state.source_value = youtube_url.strip()
                 st.success("Audio downloaded and prepared.")
             except Exception as exc:
-                st.error(str(exc))
+                _show_stage_error(
+                    "YouTube audio preparation",
+                    exc,
+                    "Use a single-video URL (not playlist) and verify network access/URL validity.",
+                )
 
     if st.session_state.wav_path:
         st.caption(f"Prepared WAV: {st.session_state.wav_path}")
@@ -170,7 +185,11 @@ def _render_stem_stage() -> None:
                 )
             st.success("Stems generated.")
         except Exception as exc:
-            st.error(str(exc))
+            _show_stage_error(
+                "Stem separation",
+                exc,
+                "Verify `demucs` is installed and rerun preflight checks.",
+            )
             return
 
     stems = st.session_state.stems
@@ -268,7 +287,7 @@ def _render_options_stage() -> dict:
             st.session_state.opt_density_threshold = int(profile_defaults["density_threshold"])
             st.rerun()
 
-    return {
+    options = {
         "title": title,
         "composer": composer,
         "school": school,
@@ -278,6 +297,31 @@ def _render_options_stage() -> dict:
         "min_note_duration_beats": min_duration,
         "density_threshold": density_threshold,
     }
+    _render_simplification_guardrails(options)
+    return options
+
+
+def _render_simplification_guardrails(options: dict) -> None:
+    """Show non-blocking warnings for unusually risky simplification settings."""
+    if not options.get("simplify_enabled", False):
+        return
+
+    grid = options.get("quantize_grid")
+    min_duration = float(options.get("min_note_duration_beats", 0.25))
+    density = int(options.get("density_threshold", 6))
+
+    if grid == "1/4" and min_duration >= 0.5:
+        st.warning(
+            "Aggressive simplification selected: quarter-note grid + long minimum duration can remove many notes."
+        )
+    if density <= 4:
+        st.warning(
+            "Low density threshold may prune busy passages heavily. Increase threshold if parts become too sparse."
+        )
+    if grid == "1/16" and min_duration <= 0.125 and density >= 9:
+        st.info(
+            "Very light simplification selected: output may remain rhythmically dense for younger players."
+        )
 
 
 def _render_run_summary() -> None:
@@ -328,7 +372,16 @@ def _render_part_report() -> None:
             st.markdown(f"- **{name}**: {notes} notes — exported")
         else:
             reason = entry.get("reason", "unknown")
-            st.warning(f"**{name}**: skipped ({reason})")
+            suggestion = "Review assignments and rerun."
+            if reason == "unassigned":
+                suggestion = "Assign this stem to an instrument, then rerun export."
+            elif reason == "no_notes":
+                suggestion = (
+                    "Try a less aggressive profile (or relax advanced settings), then rerun."
+                )
+            elif reason == "missing_musicxml":
+                suggestion = "Re-run export to regenerate part files."
+            st.warning(f"**{name}**: skipped ({reason}). {suggestion}")
             has_skips = True
 
     if has_skips:
@@ -337,20 +390,44 @@ def _render_part_report() -> None:
 
 def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, run_id: str) -> None:
     """Execute the transcribe -> score -> PDF -> manifest -> ZIP pipeline."""
-    with st.spinner("Transcribing stems with Basic Pitch..."):
-        st.session_state.midi_map = transcribe_to_midi(assigned_stems, run_dir=run_dir)
-    with st.spinner("Building score..."):
-        st.session_state.score_data = build_score(
-            st.session_state.midi_map,
-            st.session_state.assignments,
-            options,
-            run_dir=run_dir,
+    try:
+        with st.spinner("Transcribing stems with Basic Pitch..."):
+            st.session_state.midi_map = transcribe_to_midi(assigned_stems, run_dir=run_dir)
+    except Exception as exc:
+        _show_stage_error(
+            "Transcription",
+            exc,
+            "Verify `basic-pitch` is installed and stems are valid WAV files, then retry.",
         )
-        st.session_state.musicxml_path = st.session_state.score_data["full_score"]
-    with st.spinner("Rendering PDFs with MuseScore..."):
-        render_result = render_pdfs(st.session_state.score_data)
-        st.session_state.pdf_paths = render_result["paths"]
-        st.session_state.part_report = render_result["part_report"]
+        return
+    try:
+        with st.spinner("Building score..."):
+            st.session_state.score_data = build_score(
+                st.session_state.midi_map,
+                st.session_state.assignments,
+                options,
+                run_dir=run_dir,
+            )
+            st.session_state.musicxml_path = st.session_state.score_data["full_score"]
+    except Exception as exc:
+        _show_stage_error(
+            "Score build",
+            exc,
+            "Check assignments and simplification settings, then rerun.",
+        )
+        return
+    try:
+        with st.spinner("Rendering PDFs with MuseScore..."):
+            render_result = render_pdfs(st.session_state.score_data)
+            st.session_state.pdf_paths = render_result["paths"]
+            st.session_state.part_report = render_result["part_report"]
+    except Exception as exc:
+        _show_stage_error(
+            "PDF rendering",
+            exc,
+            "Verify `mscore` is available and exported parts contain notes.",
+        )
+        return
 
     # Build unassigned-stem entries for manifest
     all_part_report = list(st.session_state.part_report)
@@ -361,24 +438,41 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
                 "reason": "unassigned", "note_count": 0,
             })
 
-    # Write manifest
-    manifest_path = write_run_manifest(
-        manifest_path=run_dir / "manifest.json",
-        run_id=run_id,
-        source_type=st.session_state.source_type,
-        source_value=st.session_state.source_value,
-        options=options,
-        assignments=st.session_state.assignments,
-        part_report=all_part_report,
-        pipeline={"app_version": APP_VERSION, "demucs_model": DEMUCS_MODEL},
-        tool_versions=get_tool_versions(),
-    )
-    # Package ZIP (PDFs + MusicXML + manifest)
-    zip_name = f"{sanitize_filename(options['title'])}_exports.zip"
-    st.session_state.zip_path = zip_outputs(
-        st.session_state.pdf_paths + [st.session_state.musicxml_path, manifest_path],
-        str(DOWNLOADS_DIR / zip_name),
-    )
+    try:
+        # Write manifest
+        manifest_path = write_run_manifest(
+            manifest_path=run_dir / "manifest.json",
+            run_id=run_id,
+            source_type=st.session_state.source_type,
+            source_value=st.session_state.source_value,
+            options=options,
+            assignments=st.session_state.assignments,
+            part_report=all_part_report,
+            pipeline={"app_version": APP_VERSION, "demucs_model": DEMUCS_MODEL},
+            tool_versions=get_tool_versions(),
+        )
+    except Exception as exc:
+        _show_stage_error(
+            "Manifest write",
+            exc,
+            "Check write permissions for the run directory and retry export.",
+        )
+        return
+
+    try:
+        # Package ZIP (PDFs + MusicXML + manifest)
+        zip_name = f"{sanitize_filename(options['title'])}_exports.zip"
+        st.session_state.zip_path = zip_outputs(
+            st.session_state.pdf_paths + [st.session_state.musicxml_path, manifest_path],
+            str(DOWNLOADS_DIR / zip_name),
+        )
+    except Exception as exc:
+        _show_stage_error(
+            "ZIP packaging",
+            exc,
+            "Check output directory permissions and available disk space, then retry.",
+        )
+        return
     st.success(f"Export complete (run {run_id}).")
 
 
@@ -413,7 +507,11 @@ def _render_export_stage(options: dict) -> None:
                 return
             _run_export(options, assigned_stems, run_dir, st.session_state.run_id)
         except Exception as exc:
-            st.error(str(exc))
+            _show_stage_error(
+                "Export pipeline",
+                exc,
+                "Retry export; if it persists, run preflight checks and review Diagnostics.",
+            )
             return
 
     # Quick Rerun — reuse stems + assignments with new run ID and current settings
@@ -423,7 +521,11 @@ def _render_export_stage(options: dict) -> None:
                 new_run_dir = _new_run()  # updates session_state.run_id
                 _run_export(options, assigned_stems, new_run_dir, st.session_state.run_id)
             except Exception as exc:
-                st.error(str(exc))
+                _show_stage_error(
+                    "Quick rerun",
+                    exc,
+                    "Retry with current stems/assignments or restart from input if needed.",
+                )
                 return
 
     # QC surface
