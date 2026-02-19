@@ -31,6 +31,7 @@ from utils import (
     create_run_id,
     get_tool_paths,
     get_tool_versions,
+    list_recent_run_summaries,
     run_preflight_checks,
     sanitize_filename,
     write_run_manifest,
@@ -366,6 +367,35 @@ def _render_diagnostics_panel() -> None:
             st.markdown(f"- `{item['name']}`: `{item['path'] or 'not found'}`")
 
 
+def _shorten(value: str, max_len: int = 48) -> str:
+    if len(value) <= max_len:
+        return value
+    return f"{value[:max_len - 3]}..."
+
+
+def _render_recent_runs_panel() -> None:
+    """Read-only summary of recent run manifests."""
+    with st.expander("Recent Runs", expanded=False):
+        rows = list_recent_run_summaries(RUNS_DIR, limit=5)
+        if not rows:
+            st.caption("No recent run manifests found.")
+            return
+
+        table_rows = []
+        for row in rows:
+            table_rows.append(
+                {
+                    "run_id": row["run_id"],
+                    "timestamp": row["timestamp"],
+                    "input": f"{row['input_type']}: {_shorten(str(row['input_value']))}",
+                    "simplify": f"{row['profile']} ({'on' if row['simplify_enabled'] else 'off'})",
+                    "parts": f"{row['exported_parts']} exported / {row['skipped_parts']} skipped",
+                    "zip": row["zip_filename"] or "n/a",
+                }
+            )
+        st.table(table_rows)
+
+
 def _render_part_report() -> None:
     """Show QC summary table for generated parts."""
     report = st.session_state.part_report
@@ -450,6 +480,7 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
 
     try:
         # Write manifest
+        zip_name = f"{sanitize_filename(options['title'])}_exports.zip"
         manifest_path = write_run_manifest(
             manifest_path=run_dir / "manifest.json",
             run_id=run_id,
@@ -460,6 +491,7 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
             part_report=all_part_report,
             pipeline={"app_version": APP_VERSION, "demucs_model": DEMUCS_MODEL},
             tool_versions=get_tool_versions(),
+            zip_filename=zip_name,
         )
     except Exception as exc:
         _show_stage_error(
@@ -471,7 +503,6 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
 
     try:
         # Package ZIP (PDFs + MusicXML + manifest)
-        zip_name = f"{sanitize_filename(options['title'])}_exports.zip"
         st.session_state.zip_path = zip_outputs(
             st.session_state.pdf_paths + [st.session_state.musicxml_path, manifest_path],
             str(DOWNLOADS_DIR / zip_name),
@@ -607,6 +638,7 @@ def main() -> None:
 
     _render_preflight()
     _render_diagnostics_panel()
+    _render_recent_runs_panel()
     _render_input_stage()
     _render_stem_stage()
     options = _render_options_stage()

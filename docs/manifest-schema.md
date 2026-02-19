@@ -9,6 +9,7 @@ This document defines the JSON schema written to each run's `manifest.json`.
 - `input` (object): Input source details.
 - `options` (object): Effective score/simplification options used for this run.
 - `pipeline` (object): Pipeline metadata for traceability.
+- `outcome` (object): Compact result summary for quick run comparison.
 - `assignments` (object): Stem to instrument map as selected in UI.
 - `parts` (array): Part export outcomes including skipped reasons.
 - `tool_versions` (object): Best-effort tool version strings.
@@ -29,6 +30,11 @@ This document defines the JSON schema written to each run's `manifest.json`.
 ### `pipeline`
 - `app_version` (string): App version from `config.py`.
 - `demucs_model` (string): Active Demucs model name.
+
+### `outcome`
+- `exported_part_count` (integer): Number of exported non-empty parts.
+- `skipped_part_count` (integer): Number of skipped parts.
+- `zip_filename` (string): ZIP artifact filename for this run.
 
 ### `parts[]`
 Each entry includes:
@@ -57,6 +63,11 @@ Each entry includes:
   "pipeline": {
     "app_version": "0.4.0",
     "demucs_model": "htdemucs"
+  },
+  "outcome": {
+    "exported_part_count": 1,
+    "skipped_part_count": 0,
+    "zip_filename": "My_Song_exports.zip"
   },
   "assignments": {
     "bass": "Tuba"

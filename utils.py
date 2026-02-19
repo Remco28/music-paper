@@ -149,6 +149,7 @@ def write_run_manifest(
     part_report: list[dict],
     pipeline: dict[str, str],
     tool_versions: dict[str, str],
+    zip_filename: str,
 ) -> str:
     """Write a JSON manifest summarizing a pipeline run."""
     manifest = {
@@ -163,6 +164,11 @@ def write_run_manifest(
             "density_threshold": options.get("density_threshold"),
         },
         "pipeline": pipeline,
+        "outcome": {
+            "exported_part_count": sum(1 for part in part_report if part.get("status") == "exported"),
+            "skipped_part_count": sum(1 for part in part_report if part.get("status") != "exported"),
+            "zip_filename": zip_filename,
+        },
         "assignments": assignments,
         "parts": part_report,
         "tool_versions": tool_versions,
@@ -170,3 +176,48 @@ def write_run_manifest(
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2))
     return str(manifest_path)
+
+
+def list_recent_run_summaries(runs_dir: Path, limit: int = 5) -> list[dict]:
+    """Return recent manifest summaries (newest-first), skipping unreadable/corrupt files."""
+    def _safe_int(value, default: int = 0) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    if limit <= 0 or not runs_dir.exists():
+        return []
+
+    summaries: list[dict] = []
+    run_dirs = [path for path in runs_dir.iterdir() if path.is_dir()]
+    run_dirs.sort(key=lambda path: path.name, reverse=True)
+
+    for run_dir in run_dirs:
+        manifest_path = run_dir / "manifest.json"
+        if not manifest_path.exists():
+            continue
+        try:
+            data = json.loads(manifest_path.read_text())
+        except Exception:
+            continue
+
+        input_block = data.get("input") or {}
+        options = data.get("options") or {}
+        outcome = data.get("outcome") or {}
+        summaries.append(
+            {
+                "run_id": data.get("run_id", run_dir.name),
+                "timestamp": data.get("timestamp", ""),
+                "input_type": input_block.get("type", ""),
+                "input_value": input_block.get("value", ""),
+                "profile": options.get("profile", ""),
+                "simplify_enabled": bool(options.get("simplify_enabled", False)),
+                "exported_parts": _safe_int(outcome.get("exported_part_count", 0)),
+                "skipped_parts": _safe_int(outcome.get("skipped_part_count", 0)),
+                "zip_filename": outcome.get("zip_filename", ""),
+            }
+        )
+        if len(summaries) >= limit:
+            break
+    return summaries

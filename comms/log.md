@@ -147,3 +147,8 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-19 16:33] [Architect]: REVIEW PASS: Phase 5 accepted after Revision 1. Failure-state integrity now prevents stale artifacts from appearing after failed export/rerun attempts.
 [2026-02-19 16:33] [Architect]: SPEC ARCHIVED: Moved phase-5 spec and phase-5-revision-1 spec to archive.
 [2026-02-19 16:33] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-6-manifest-quality-and-run-history.md.
+
+[2026-02-19 16:40] [Developer]: IMPL DONE (Phase 6): Added manifest outcome summary fields, defensive recent-run summary utilities, and in-app Recent Runs panel.
+[2026-02-19 16:40] [Architect]: REVIEW PASS: Phase 6 accepted. Manifest outcome fields and run-history panel meet traceability requirements with graceful corrupt-manifest handling.
+[2026-02-19 16:40] [Architect]: SPEC ARCHIVED: Moved phase-6 spec to archive.
+[2026-02-19 16:40] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-7-export-ergonomics-and-audit-polish.md.

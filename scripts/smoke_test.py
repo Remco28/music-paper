@@ -74,6 +74,7 @@ def check_manifest_roundtrip() -> None:
             part_report=[{"name": "Tuba", "status": "exported", "note_count": 12}],
             pipeline={"app_version": "smoke", "demucs_model": "htdemucs"},
             tool_versions={"python": sys.version.split()[0]},
+            zip_filename="smoke_exports.zip",
         )
         data = json.loads(path.read_text())
         required = {
@@ -82,6 +83,7 @@ def check_manifest_roundtrip() -> None:
             "input",
             "options",
             "pipeline",
+            "outcome",
             "assignments",
             "parts",
             "tool_versions",
