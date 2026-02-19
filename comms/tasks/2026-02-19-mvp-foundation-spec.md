@@ -68,7 +68,7 @@ This is the minimal path that proves the core product value: conversion from rea
 ## Functional Constraints
 1. Input supports both:
    - local audio files (MP3/AAC/WAV minimum)
-   - YouTube URLs (audio-only extraction)
+   - YouTube single-video URLs only (audio-only extraction, no playlists)
 2. Export only assigned and non-empty parts.
 3. No auth gate in app startup flow.
 4. Simplification must include:
@@ -97,6 +97,15 @@ This is the minimal path that proves the core product value: conversion from rea
   - quantize grid selector
   - minimum note duration
   - rhythmic density threshold
+
+### Recommended Default Values (Architect Judgment)
+- preset quantize grid: `1/8`
+- preset minimum note duration: `0.25 beats`
+- preset rhythmic density threshold: `6 onset events per beat-window`
+- advanced ranges:
+  - quantize grid: `1/4`, `1/8`, `1/16`
+  - minimum note duration: `0.125` to `0.5 beats`
+  - rhythmic density threshold: `3` to `10 onset events per beat-window`
 
 ## Acceptance Criteria
 1. Both input paths (local file and YouTube URL) complete end-to-end.
