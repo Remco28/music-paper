@@ -87,3 +87,53 @@ PHASE-2 PATCH NOTES:
      path check. Config entry uses {"check": "pydub"} flag; run_preflight_checks handles it.
 [2026-02-19 15:57] [Architect]: REVIEW PASS: Phase-2 implementation accepted. Run-scoped isolation, collision guard, mandatory preflight gating, manifest packaging, and QC surface verified.
 [2026-02-19 15:59] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-3-quality-calibration-and-acceptance.md for next implementation cycle.
+[2026-02-19 16:00] [CLAUDE]: IMPL IN_PROGRESS: Phase 3 — simplification profiles, run rating/notes, quick rerun, benchmark tracking document.
+[2026-02-19 16:15] [CLAUDE]: IMPL DONE: Phase 3 complete. See summary below.
+
+PHASE 3 IMPLEMENTATION NOTES:
+  Files changed: config.py, utils.py, app.py, README_for_teacher.md, project-manifest.md
+  Files created: docs/quality-benchmark.md
+
+  1. Simplification Profiles (config.py:58-78, app.py:195-206)
+     - SIMPLIFY_PROFILES dict with Conservative/Balanced/Aggressive parameter sets
+     - DEFAULT_PROFILE = "Balanced"; SIMPLIFY_PRESET derived from it
+     - Profile selector in UI pre-fills advanced controls; advanced expander overrides profile values
+
+  2. Run Rating + Notes (app.py:373-397, utils.py:149-162)
+     - New step 5 "Run Review" appears after export completes
+     - Teacher sets rating (1-5), usable_for_rehearsal (yes/no), free-text notes
+     - update_run_manifest() appends "review" block to existing manifest JSON
+     - Schema is additive (backward-compatible)
+
+  3. Quick Rerun (app.py:263-307, 344-352)
+     - Extracted _run_export() helper (midi -> score -> pdf -> manifest -> zip)
+     - "Quick Rerun" button shown when midi_map exists and stems are assigned
+     - Creates new run_id/run_dir via _new_run(), then calls _run_export
+     - Does NOT re-run audio input or Demucs — only transcription onward
+
+  4. Benchmark Tracking (docs/quality-benchmark.md)
+     - 3-song checklist template: title, source, profile, settings, run ID, rating, usable, notes, pass/fail
+     - Acceptance decision section with 4-point checklist
+
+  Signature changes:
+    - options dict now includes "profile" key (selected profile name)
+    - manifest_path stored in session state for review stage access
+    - New function: update_run_manifest(manifest_path, rating, usable_for_rehearsal, notes)
+
+[2026-02-19 16:06] [Architect]: REVIEW PASS: Phase-3 implementation accepted. Profiles, quick rerun with new run IDs, manifest review metadata, and benchmark template verified against spec.
+
+[2026-02-19 16:07] [Architect]: SCOPE UPDATE: Removed Phase-3 in-app teacher review/rating flow and benchmark doc to keep MVP focused on core local transcription pipeline.
+
+[2026-02-19 16:08] [Architect]: IMPLEMENTED: Run manifest now includes simplification reproducibility options (profile, simplify flag, quantize/min-duration/density).
+
+[2026-02-19 16:09] [Architect]: PREFS UPDATED: No auth, no teacher review flow, keep profiles+advanced override, keep quick rerun, remember last-used options, include pipeline metadata in manifest.
+[2026-02-19 16:09] [Architect]: IMPLEMENTED: Added manifest pipeline metadata, session-level option persistence, and post-export run summary block.
+[2026-02-19 16:09] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-4-regression-safety-and-ops.md.
+
+[2026-02-19 16:25] [Architect]: SELF-REVIEW: Found non-critical UX risk in option persistence visibility; addressed with explicit "Reset Advanced to Selected Profile" control. No unresolved app-breaking defects remain.
+[2026-02-19 16:26] [Developer]: IMPL DONE (Phase 4): Added diagnostics panel, tool-path resolution helper, smoke test script, manifest schema doc, and release checklist.
+[2026-02-19 16:26] [Developer]: FIXED: smoke_test import path initialization so script runs from repository root invocation path.
+
+[2026-02-19 16:27] [Architect]: REVIEW PASS: Phase-4 implementation accepted after smoke-test path fix and diagnostics panel completion.
+[2026-02-19 16:27] [Architect]: SPEC ARCHIVED: Moved comms/tasks/2026-02-19-phase-4-regression-safety-and-ops.md to archive.
+[2026-02-19 16:27] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-5-output-quality-and-failure-clarity.md.

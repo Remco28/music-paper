@@ -27,3 +27,11 @@
 - Inputs: local audio files and YouTube URL audio extraction
 - Outputs: conductor score PDF + assigned/non-empty individual part PDFs
 - Quality benchmark: 3 representative songs approved by teacher
+
+## 5. Current Preferences (2026-02-19)
+- No authentication for MVP (local trusted usage only).
+- No in-app teacher rating/review workflow.
+- Keep simplification profiles + advanced manual override.
+- Keep quick rerun flow with run-scoped isolation.
+- Persist last-used score options during session.
+- Include pipeline metadata and simplification settings in run manifest.

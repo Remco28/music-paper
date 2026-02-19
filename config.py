@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+APP_VERSION = "0.4.0"
 TEMP_DIR = PROJECT_ROOT / "temp"
 RUNS_DIR = TEMP_DIR / "runs"
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
@@ -55,12 +56,27 @@ INSTRUMENT_SPECS: dict[str, int] = {
 
 STANDARD_INSTRUMENTS = list(INSTRUMENT_SPECS.keys())
 
-SIMPLIFY_PRESET = {
-    "enabled": True,
-    "quantize_grid": "1/8",
-    "min_note_duration_beats": 0.25,
-    "density_threshold": 6,
+SIMPLIFY_PROFILES: dict[str, dict] = {
+    "Conservative": {
+        "quantize_grid": "1/16",
+        "min_note_duration_beats": 0.125,
+        "density_threshold": 10,
+    },
+    "Balanced": {
+        "quantize_grid": "1/8",
+        "min_note_duration_beats": 0.25,
+        "density_threshold": 6,
+    },
+    "Aggressive": {
+        "quantize_grid": "1/4",
+        "min_note_duration_beats": 0.5,
+        "density_threshold": 3,
+    },
 }
+
+DEFAULT_PROFILE = "Balanced"
+
+SIMPLIFY_PRESET = SIMPLIFY_PROFILES[DEFAULT_PROFILE] | {"enabled": True}
 
 SIMPLIFY_ADVANCED_RANGES = {
     "quantize_grid": ("1/4", "1/8", "1/16"),

@@ -52,8 +52,17 @@ streamlit run app.py --server.headless true --server.port 8501
 7. Download ZIP containing rendered outputs.
 
 ## Simplification
-- `Student Simplification Mode` applies preset cleanup.
-- `Advanced Simplification Settings` lets you tune quantization, min note duration, and density threshold.
+- **Simplification Profiles** let you choose from three presets:
+  - `Conservative` — least simplification, keeps more musical detail
+  - `Balanced` — default middle ground
+  - `Aggressive` — most simplification, best for beginners
+- `Student Simplification Mode` enables/disables simplification entirely.
+- `Advanced Simplification Settings` lets you override the profile values for quantization, min note duration, and density threshold.
+
+## Reviewing and Rerunning
+- Use **Quick Rerun** to try different simplification settings without re-uploading audio or re-separating stems. Each rerun gets its own isolated output.
+- The app shows a compact run summary after export (run ID + exported/skipped part counts).
+- Last-used score options are remembered during the session so repeated runs are faster.
 
 ## Verifying Your Setup
 After installing, run the validation script to confirm everything is in place:
@@ -62,9 +71,17 @@ python scripts/validate_setup.py
 ```
 This checks Python version, required packages, and external tools (demucs, basic-pitch, mscore, ffmpeg).
 
+Maintainer smoke test:
+```
+python scripts/smoke_test.py
+```
+This performs import checks, config invariant checks, and manifest schema sanity checks.
+
 ## Notes
 - No login/authentication in MVP.
 - Processing runs locally after dependencies are installed.
 - The app runs preflight checks on required tools before each pipeline run.
+- The app includes a read-only `Diagnostics` panel showing environment context and latest run pointers.
 - Each transcription run produces an isolated set of artifacts and a JSON manifest in the ZIP.
+- The manifest includes selected simplification settings and pipeline metadata (`app_version`, `demucs_model`) for traceability.
 - If a stage fails, the app displays the command error so issues can be fixed directly.

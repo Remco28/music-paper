@@ -5,11 +5,15 @@ from pathlib import Path
 import streamlit as st
 
 from config import (
+    APP_VERSION,
+    DEFAULT_PROFILE,
     DOWNLOADS_DIR,
+    DEMUCS_MODEL,
     REQUIRED_TOOLS,
     RUNS_DIR,
     SIMPLIFY_ADVANCED_RANGES,
     SIMPLIFY_PRESET,
+    SIMPLIFY_PROFILES,
     STANDARD_INSTRUMENTS,
     SUPPORTED_AUDIO_EXTENSIONS,
     TEMP_DIR,
@@ -25,6 +29,7 @@ from utils import (
     cleanup_temp,
     create_run_dir,
     create_run_id,
+    get_tool_paths,
     get_tool_versions,
     run_preflight_checks,
     sanitize_filename,
@@ -49,6 +54,15 @@ def _init_state() -> None:
         "run_id": "",
         "run_dir": "",
         "preflight": [],
+        "opt_title": "Untitled",
+        "opt_composer": "",
+        "opt_school": "",
+        "opt_simplify_enabled": SIMPLIFY_PRESET["enabled"],
+        "opt_profile": DEFAULT_PROFILE,
+        "opt_profile_applied": DEFAULT_PROFILE,
+        "opt_quantize_grid": SIMPLIFY_PRESET["quantize_grid"],
+        "opt_min_duration": float(SIMPLIFY_PRESET["min_note_duration_beats"]),
+        "opt_density_threshold": int(SIMPLIFY_PRESET["density_threshold"]),
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -182,46 +196,120 @@ def _render_stem_stage() -> None:
 
 def _render_options_stage() -> dict:
     st.subheader("3) Score Options")
-    title = st.text_input("Song Title", value="Untitled")
-    composer = st.text_input("Composer", value="")
-    school = st.text_input("School / Teacher Name", value="")
+    title = st.text_input("Song Title", key="opt_title")
+    composer = st.text_input("Composer", key="opt_composer")
+    school = st.text_input("School / Teacher Name", key="opt_school")
 
-    simplify_enabled = st.checkbox("Student Simplification Mode", value=SIMPLIFY_PRESET["enabled"])
+    simplify_enabled = st.checkbox("Student Simplification Mode", key="opt_simplify_enabled")
 
-    quantize_grid = SIMPLIFY_PRESET["quantize_grid"]
-    min_duration = SIMPLIFY_PRESET["min_note_duration_beats"]
-    density_threshold = SIMPLIFY_PRESET["density_threshold"]
+    profile_names = list(SIMPLIFY_PROFILES.keys())
+    if st.session_state.opt_profile not in profile_names:
+        st.session_state.opt_profile = DEFAULT_PROFILE
 
-    with st.expander("Advanced Simplification Settings"):
+    selected_profile = st.selectbox(
+        "Simplification Profile",
+        options=profile_names,
+        index=profile_names.index(st.session_state.opt_profile),
+        key="opt_profile",
+    )
+    profile_defaults = SIMPLIFY_PROFILES[selected_profile]
+    if st.session_state.opt_profile_applied != selected_profile:
+        st.session_state.opt_quantize_grid = profile_defaults["quantize_grid"]
+        st.session_state.opt_min_duration = float(profile_defaults["min_note_duration_beats"])
+        st.session_state.opt_density_threshold = int(profile_defaults["density_threshold"])
+        st.session_state.opt_profile_applied = selected_profile
+
+    default_quantize = profile_defaults["quantize_grid"]
+    default_min_duration = float(profile_defaults["min_note_duration_beats"])
+    default_density = int(profile_defaults["density_threshold"])
+
+    with st.expander("Advanced Simplification Settings (overrides profile)"):
         quantize_grid = st.selectbox(
             "Quantize Grid",
             options=list(SIMPLIFY_ADVANCED_RANGES["quantize_grid"]),
-            index=list(SIMPLIFY_ADVANCED_RANGES["quantize_grid"]).index(quantize_grid),
+            index=list(SIMPLIFY_ADVANCED_RANGES["quantize_grid"]).index(
+                st.session_state.opt_quantize_grid
+                if st.session_state.opt_quantize_grid in SIMPLIFY_ADVANCED_RANGES["quantize_grid"]
+                else default_quantize
+            ),
+            key="opt_quantize_grid",
         )
         min_duration = st.slider(
             "Minimum Note Duration (beats)",
             min_value=float(SIMPLIFY_ADVANCED_RANGES["min_note_duration_beats"][0]),
             max_value=float(SIMPLIFY_ADVANCED_RANGES["min_note_duration_beats"][1]),
-            value=float(min_duration),
+            value=(
+                float(st.session_state.opt_min_duration)
+                if float(SIMPLIFY_ADVANCED_RANGES["min_note_duration_beats"][0])
+                <= float(st.session_state.opt_min_duration)
+                <= float(SIMPLIFY_ADVANCED_RANGES["min_note_duration_beats"][1])
+                else default_min_duration
+            ),
             step=0.125,
+            key="opt_min_duration",
         )
         density_threshold = st.slider(
             "Rhythmic Density Threshold (onsets per beat window)",
             min_value=int(SIMPLIFY_ADVANCED_RANGES["density_threshold"][0]),
             max_value=int(SIMPLIFY_ADVANCED_RANGES["density_threshold"][1]),
-            value=int(density_threshold),
+            value=(
+                int(st.session_state.opt_density_threshold)
+                if int(SIMPLIFY_ADVANCED_RANGES["density_threshold"][0])
+                <= int(st.session_state.opt_density_threshold)
+                <= int(SIMPLIFY_ADVANCED_RANGES["density_threshold"][1])
+                else default_density
+            ),
             step=1,
+            key="opt_density_threshold",
         )
+        if st.button("Reset Advanced to Selected Profile", use_container_width=True):
+            st.session_state.opt_quantize_grid = profile_defaults["quantize_grid"]
+            st.session_state.opt_min_duration = float(profile_defaults["min_note_duration_beats"])
+            st.session_state.opt_density_threshold = int(profile_defaults["density_threshold"])
+            st.rerun()
 
     return {
         "title": title,
         "composer": composer,
         "school": school,
         "simplify_enabled": simplify_enabled,
+        "profile": selected_profile,
         "quantize_grid": quantize_grid,
         "min_note_duration_beats": min_duration,
         "density_threshold": density_threshold,
     }
+
+
+def _render_run_summary() -> None:
+    """Show a compact summary of the most recent export."""
+    if not st.session_state.run_id or not st.session_state.part_report:
+        return
+    exported = sum(1 for item in st.session_state.part_report if item.get("status") == "exported")
+    skipped = sum(1 for item in st.session_state.part_report if item.get("status") != "exported")
+    st.info(f"Run `{st.session_state.run_id}` complete: {exported} parts exported, {skipped} skipped.")
+
+
+def _render_diagnostics_panel() -> None:
+    """Read-only diagnostics for environment and latest run pointers."""
+    with st.expander("Diagnostics", expanded=False):
+        tool_versions = get_tool_versions()
+        tool_paths = get_tool_paths(REQUIRED_TOOLS)
+        status_map = {item["name"]: ("pass" if item["path"] else "fail") for item in tool_paths}
+        for item in st.session_state.preflight:
+            status_map[item["name"]] = item["status"]
+
+        st.markdown(f"- Python: `{tool_versions.get('python', 'unknown')}`")
+        st.markdown(f"- App Version: `{APP_VERSION}`")
+        st.markdown(f"- Demucs Model: `{DEMUCS_MODEL}`")
+        st.markdown(f"- Latest Run ID: `{st.session_state.run_id or 'n/a'}`")
+        st.markdown(f"- Latest ZIP: `{st.session_state.zip_path or 'n/a'}`")
+        st.markdown("**Tool Availability**")
+        for name, status in status_map.items():
+            icon = "PASS" if status == "pass" else "FAIL"
+            st.markdown(f"- `{name}`: `{icon}`")
+        st.markdown("**Executable Paths**")
+        for item in tool_paths:
+            st.markdown(f"- `{item['name']}`: `{item['path'] or 'not found'}`")
 
 
 def _render_part_report() -> None:
@@ -245,6 +333,53 @@ def _render_part_report() -> None:
 
     if has_skips:
         st.caption("Skipped parts were either unassigned or contained no notes after processing.")
+
+
+def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, run_id: str) -> None:
+    """Execute the transcribe -> score -> PDF -> manifest -> ZIP pipeline."""
+    with st.spinner("Transcribing stems with Basic Pitch..."):
+        st.session_state.midi_map = transcribe_to_midi(assigned_stems, run_dir=run_dir)
+    with st.spinner("Building score..."):
+        st.session_state.score_data = build_score(
+            st.session_state.midi_map,
+            st.session_state.assignments,
+            options,
+            run_dir=run_dir,
+        )
+        st.session_state.musicxml_path = st.session_state.score_data["full_score"]
+    with st.spinner("Rendering PDFs with MuseScore..."):
+        render_result = render_pdfs(st.session_state.score_data)
+        st.session_state.pdf_paths = render_result["paths"]
+        st.session_state.part_report = render_result["part_report"]
+
+    # Build unassigned-stem entries for manifest
+    all_part_report = list(st.session_state.part_report)
+    for stem_name in st.session_state.stems:
+        if not st.session_state.assignments.get(stem_name, "").strip():
+            all_part_report.append({
+                "name": stem_name, "status": "skipped",
+                "reason": "unassigned", "note_count": 0,
+            })
+
+    # Write manifest
+    manifest_path = write_run_manifest(
+        manifest_path=run_dir / "manifest.json",
+        run_id=run_id,
+        source_type=st.session_state.source_type,
+        source_value=st.session_state.source_value,
+        options=options,
+        assignments=st.session_state.assignments,
+        part_report=all_part_report,
+        pipeline={"app_version": APP_VERSION, "demucs_model": DEMUCS_MODEL},
+        tool_versions=get_tool_versions(),
+    )
+    # Package ZIP (PDFs + MusicXML + manifest)
+    zip_name = f"{sanitize_filename(options['title'])}_exports.zip"
+    st.session_state.zip_path = zip_outputs(
+        st.session_state.pdf_paths + [st.session_state.musicxml_path, manifest_path],
+        str(DOWNLOADS_DIR / zip_name),
+    )
+    st.success(f"Export complete (run {run_id}).")
 
 
 def _render_export_stage(options: dict) -> None:
@@ -276,55 +411,23 @@ def _render_export_stage(options: dict) -> None:
             if not run_dir:
                 st.error("No active run. Prepare audio input first.")
                 return
-            run_id = st.session_state.run_id
-
-            with st.spinner("Transcribing stems with Basic Pitch..."):
-                st.session_state.midi_map = transcribe_to_midi(assigned_stems, run_dir=run_dir)
-            with st.spinner("Building score..."):
-                st.session_state.score_data = build_score(
-                    st.session_state.midi_map,
-                    st.session_state.assignments,
-                    options,
-                    run_dir=run_dir,
-                )
-                st.session_state.musicxml_path = st.session_state.score_data["full_score"]
-            with st.spinner("Rendering PDFs with MuseScore..."):
-                render_result = render_pdfs(st.session_state.score_data)
-                st.session_state.pdf_paths = render_result["paths"]
-                st.session_state.part_report = render_result["part_report"]
-
-            # Build unassigned-stem entries for manifest
-            all_part_report = list(st.session_state.part_report)
-            for stem_name in st.session_state.stems:
-                if not st.session_state.assignments.get(stem_name, "").strip():
-                    all_part_report.append({
-                        "name": stem_name, "status": "skipped",
-                        "reason": "unassigned", "note_count": 0,
-                    })
-
-            # Write manifest
-            manifest_path = write_run_manifest(
-                manifest_path=run_dir / "manifest.json",
-                run_id=run_id,
-                source_type=st.session_state.source_type,
-                source_value=st.session_state.source_value,
-                assignments=st.session_state.assignments,
-                part_report=all_part_report,
-                tool_versions=get_tool_versions(),
-            )
-
-            # Package ZIP (PDFs + MusicXML + manifest)
-            zip_name = f"{sanitize_filename(options['title'])}_exports.zip"
-            st.session_state.zip_path = zip_outputs(
-                st.session_state.pdf_paths + [st.session_state.musicxml_path, manifest_path],
-                str(DOWNLOADS_DIR / zip_name),
-            )
-            st.success(f"Export complete (run {run_id}).")
+            _run_export(options, assigned_stems, run_dir, st.session_state.run_id)
         except Exception as exc:
             st.error(str(exc))
             return
 
+    # Quick Rerun — reuse stems + assignments with new run ID and current settings
+    if st.session_state.midi_map and assigned_stems:
+        if st.button("Quick Rerun (new settings, same stems)", use_container_width=True):
+            try:
+                new_run_dir = _new_run()  # updates session_state.run_id
+                _run_export(options, assigned_stems, new_run_dir, st.session_state.run_id)
+            except Exception as exc:
+                st.error(str(exc))
+                return
+
     # QC surface
+    _render_run_summary()
     _render_part_report()
 
     if st.session_state.pdf_paths:
@@ -378,6 +481,7 @@ def main() -> None:
             st.success("Workspace reset.")
 
     _render_preflight()
+    _render_diagnostics_panel()
     _render_input_stage()
     _render_stem_stage()
     options = _render_options_stage()

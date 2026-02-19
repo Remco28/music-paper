@@ -101,6 +101,23 @@ def run_preflight_checks(tool_specs: list[dict]) -> list[dict]:
     return results
 
 
+def get_tool_paths(tool_specs: list[dict]) -> list[dict]:
+    """Resolve executable paths for configured tools (best-effort)."""
+    resolved: list[dict] = []
+    for spec in tool_specs:
+        name = spec["name"]
+        if spec.get("check") == "pydub":
+            try:
+                from pydub.utils import which
+
+                resolved.append({"name": name, "path": which("ffmpeg")})
+            except Exception:
+                resolved.append({"name": name, "path": None})
+            continue
+        resolved.append({"name": name, "path": shutil.which(spec["cmd"])})
+    return resolved
+
+
 def get_tool_versions() -> dict[str, str]:
     """Collect version strings for core tools (best-effort)."""
     import sys
@@ -127,8 +144,10 @@ def write_run_manifest(
     run_id: str,
     source_type: str,
     source_value: str,
+    options: dict,
     assignments: dict[str, str],
     part_report: list[dict],
+    pipeline: dict[str, str],
     tool_versions: dict[str, str],
 ) -> str:
     """Write a JSON manifest summarizing a pipeline run."""
@@ -136,6 +155,14 @@ def write_run_manifest(
         "run_id": run_id,
         "timestamp": datetime.now().isoformat(),
         "input": {"type": source_type, "value": source_value},
+        "options": {
+            "profile": options.get("profile"),
+            "simplify_enabled": bool(options.get("simplify_enabled", False)),
+            "quantize_grid": options.get("quantize_grid"),
+            "min_note_duration_beats": options.get("min_note_duration_beats"),
+            "density_threshold": options.get("density_threshold"),
+        },
+        "pipeline": pipeline,
         "assignments": assignments,
         "parts": part_report,
         "tool_versions": tool_versions,
