@@ -88,6 +88,7 @@ Troubleshooting guide:
 - Processing runs locally after dependencies are installed.
 - The app runs preflight checks on required tools before each pipeline run.
 - The app includes read-only `Diagnostics` and `Recent Runs` panels for environment context and run traceability.
+- `Recent Runs` supports simple filters by input type and run status (`success`/`unknown`).
 - Each transcription run produces an isolated set of artifacts and a JSON manifest in the ZIP.
 - The manifest includes selected simplification settings and pipeline metadata (`app_version`, `demucs_model`) for traceability.
 - If a stage fails, the app displays concise stage-specific guidance with next-step hints.

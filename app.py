@@ -35,6 +35,7 @@ from utils import (
     part_report_counts,
     run_preflight_checks,
     sanitize_filename,
+    set_manifest_outcome_success,
     write_run_manifest,
     zip_outputs,
 )
@@ -67,6 +68,8 @@ def _init_state() -> None:
         "opt_density_threshold": int(SIMPLIFY_PRESET["density_threshold"]),
         "export_last_ok": False,
         "export_integrity_warning": "",
+        "history_input_filter": "all",
+        "history_status_filter": "all",
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -413,14 +416,39 @@ def _render_recent_runs_panel() -> None:
             st.caption("No recent run manifests found.")
             return
 
+        col1, col2 = st.columns(2)
+        with col1:
+            input_filter = st.selectbox(
+                "Input Type",
+                options=("all", "local", "youtube"),
+                key="history_input_filter",
+            )
+        with col2:
+            status_filter = st.selectbox(
+                "Status",
+                options=("all", "success", "unknown"),
+                key="history_status_filter",
+            )
+
+        filtered = [
+            row
+            for row in rows
+            if (input_filter == "all" or row.get("input_type") == input_filter)
+            and (status_filter == "all" or row.get("status") == status_filter)
+        ]
+        if not filtered:
+            st.caption("No runs match the current filters.")
+            return
+
         table_rows = []
-        for row in rows:
+        for row in filtered:
             table_rows.append(
                 {
                     "run_id": row["run_id"],
                     "timestamp": row["timestamp"],
                     "input": f"{row['input_type']}: {_shorten(str(row['input_value']))}",
                     "simplify": f"{row['profile']} ({'on' if row['simplify_enabled'] else 'off'})",
+                    "status": row.get("status", "unknown"),
                     "parts": f"{row['exported_parts']} exported / {row['skipped_parts']} skipped",
                     "zip": row["zip_filename"] or "n/a",
                 }
@@ -524,6 +552,7 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
             pipeline={"app_version": APP_VERSION, "demucs_model": DEMUCS_MODEL},
             tool_versions=get_tool_versions(),
             zip_filename=zip_name,
+            outcome_success=True,
         )
     except Exception as exc:
         _show_stage_error(
@@ -540,6 +569,10 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
             str(DOWNLOADS_DIR / zip_name),
         )
     except Exception as exc:
+        try:
+            set_manifest_outcome_success(Path(manifest_path), False)
+        except Exception:
+            pass
         _show_stage_error(
             "ZIP packaging",
             exc,

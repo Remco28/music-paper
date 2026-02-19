@@ -75,6 +75,7 @@ def check_manifest_roundtrip() -> None:
             pipeline={"app_version": "smoke", "demucs_model": "htdemucs"},
             tool_versions={"python": sys.version.split()[0]},
             zip_filename="smoke_exports.zip",
+            outcome_success=True,
         )
         data = json.loads(path.read_text())
         required = {
@@ -89,6 +90,7 @@ def check_manifest_roundtrip() -> None:
             "tool_versions",
         }
         _assert(required.issubset(data.keys()), "Manifest missing required top-level keys")
+        _assert(isinstance(data["outcome"].get("success"), bool), "Manifest outcome.success missing/bad type")
 
 
 def main() -> int:

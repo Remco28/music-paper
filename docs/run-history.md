@@ -9,8 +9,15 @@ The app includes a read-only **Recent Runs** panel that summarizes the latest ru
 - Timestamp
 - Input type and shortened source value
 - Simplification profile + on/off
+- Status (`success` or `unknown`)
 - Exported/skipped part counts
 - ZIP filename
+
+## Filters
+- `Input Type`: `all`, `local`, `youtube`
+- `Status`: `all`, `success`, `unknown`
+
+`unknown` usually means an older manifest format or incomplete run metadata.
 
 ## Notes
 - The panel reads only local manifests and skips missing/corrupt files safely.

@@ -157,6 +157,7 @@ def write_run_manifest(
     pipeline: dict[str, str],
     tool_versions: dict[str, str],
     zip_filename: str,
+    outcome_success: bool = False,
 ) -> str:
     """Write a JSON manifest summarizing a pipeline run."""
     exported_count, skipped_count = part_report_counts(part_report)
@@ -176,6 +177,7 @@ def write_run_manifest(
             "exported_part_count": exported_count,
             "skipped_part_count": skipped_count,
             "zip_filename": zip_filename,
+            "success": bool(outcome_success),
         },
         "assignments": assignments,
         "parts": part_report,
@@ -184,6 +186,17 @@ def write_run_manifest(
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2))
     return str(manifest_path)
+
+
+def set_manifest_outcome_success(manifest_path: Path, success: bool) -> None:
+    """Update manifest outcome success flag, best-effort."""
+    data = json.loads(manifest_path.read_text())
+    outcome = data.get("outcome")
+    if not isinstance(outcome, dict):
+        outcome = {}
+    outcome["success"] = bool(success)
+    data["outcome"] = outcome
+    manifest_path.write_text(json.dumps(data, indent=2))
 
 
 def list_recent_run_summaries(runs_dir: Path, limit: int = 5) -> list[dict]:
@@ -213,6 +226,8 @@ def list_recent_run_summaries(runs_dir: Path, limit: int = 5) -> list[dict]:
         input_block = data.get("input") or {}
         options = data.get("options") or {}
         outcome = data.get("outcome") or {}
+        success_val = outcome.get("success", None)
+        success_status = "success" if success_val is True else "unknown"
         summaries.append(
             {
                 "run_id": data.get("run_id", run_dir.name),
@@ -224,6 +239,7 @@ def list_recent_run_summaries(runs_dir: Path, limit: int = 5) -> list[dict]:
                 "exported_parts": _safe_int(outcome.get("exported_part_count", 0)),
                 "skipped_parts": _safe_int(outcome.get("skipped_part_count", 0)),
                 "zip_filename": outcome.get("zip_filename", ""),
+                "status": success_status,
             }
         )
         if len(summaries) >= limit:

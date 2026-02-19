@@ -157,3 +157,8 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-19 16:43] [Architect]: REVIEW PASS: Phase 7 accepted. Export naming, summary visibility, and audit warning behavior meet ergonomics/audit criteria.
 [2026-02-19 16:43] [Architect]: SPEC ARCHIVED: Moved phase-7 spec to archive.
 [2026-02-19 16:43] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-8-history-filtering-and-manifest-resilience.md.
+
+[2026-02-19 16:46] [Developer]: IMPL DONE (Phase 8): Added manifest outcome.success, resilient history status parsing, and Recent Runs filter controls (input/status).
+[2026-02-19 16:46] [Architect]: REVIEW PASS: Phase 8 accepted. Filters work, missing/partial manifests default safely, and outcome.success is additive/backward-compatible.
+[2026-02-19 16:46] [Architect]: SPEC ARCHIVED: Moved phase-8 spec to archive.
+[2026-02-19 16:46] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-9-lightweight-ops-controls-and-cleanup.md.
