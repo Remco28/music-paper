@@ -32,6 +32,7 @@ from utils import (
     get_tool_paths,
     get_tool_versions,
     list_recent_run_summaries,
+    part_report_counts,
     run_preflight_checks,
     sanitize_filename,
     write_run_manifest,
@@ -65,6 +66,7 @@ def _init_state() -> None:
         "opt_min_duration": float(SIMPLIFY_PRESET["min_note_duration_beats"]),
         "opt_density_threshold": int(SIMPLIFY_PRESET["density_threshold"]),
         "export_last_ok": False,
+        "export_integrity_warning": "",
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -112,6 +114,22 @@ def _clear_export_outputs() -> None:
     st.session_state.part_report = []
     st.session_state.zip_path = ""
     st.session_state.export_last_ok = False
+    st.session_state.export_integrity_warning = ""
+
+
+def _format_size(num_bytes: int) -> str:
+    """Render byte size as a short human-readable string."""
+    units = ("B", "KB", "MB", "GB")
+    value = float(num_bytes)
+    unit = units[0]
+    for candidate in units:
+        unit = candidate
+        if value < 1024.0 or candidate == units[-1]:
+            break
+        value /= 1024.0
+    if unit == "B":
+        return f"{int(value)} {unit}"
+    return f"{value:.1f} {unit}"
 
 
 def _render_preflight() -> None:
@@ -344,6 +362,18 @@ def _render_run_summary() -> None:
     st.info(f"Run `{st.session_state.run_id}` complete: {exported} parts exported, {skipped} skipped.")
 
 
+def _render_export_artifact_summary() -> None:
+    """Show ZIP artifact details for the successful run."""
+    zip_path_val = st.session_state.zip_path
+    if not zip_path_val:
+        return
+    zip_path = Path(zip_path_val)
+    if not zip_path.exists():
+        return
+    size = _format_size(zip_path.stat().st_size)
+    st.caption(f"Export artifact: `{zip_path.name}` | {size} | run `{st.session_state.run_id}`")
+
+
 def _render_diagnostics_panel() -> None:
     """Read-only diagnostics for environment and latest run pointers."""
     with st.expander("Diagnostics", expanded=False):
@@ -365,6 +395,8 @@ def _render_diagnostics_panel() -> None:
         st.markdown("**Executable Paths**")
         for item in tool_paths:
             st.markdown(f"- `{item['name']}`: `{item['path'] or 'not found'}`")
+        if st.session_state.export_integrity_warning:
+            st.warning(st.session_state.export_integrity_warning)
 
 
 def _shorten(value: str, max_len: int = 48) -> str:
@@ -480,7 +512,7 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
 
     try:
         # Write manifest
-        zip_name = f"{sanitize_filename(options['title'])}_exports.zip"
+        zip_name = f"{sanitize_filename(options['title'])}_{run_id}_exports.zip"
         manifest_path = write_run_manifest(
             manifest_path=run_dir / "manifest.json",
             run_id=run_id,
@@ -514,6 +546,26 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
             "Check output directory permissions and available disk space, then retry.",
         )
         return False
+
+    # Non-blocking integrity warning: verify manifest outcome vs in-memory counts.
+    try:
+        import json
+
+        manifest_data = json.loads(Path(manifest_path).read_text())
+        outcome = manifest_data.get("outcome") or {}
+        mem_exported, mem_skipped = part_report_counts(all_part_report)
+        if (
+            int(outcome.get("exported_part_count", -1)) != mem_exported
+            or int(outcome.get("skipped_part_count", -1)) != mem_skipped
+        ):
+            st.session_state.export_integrity_warning = (
+                "Export integrity warning: manifest outcome counts do not match the current part report."
+            )
+    except Exception:
+        st.session_state.export_integrity_warning = (
+            "Export integrity warning: could not validate manifest outcome consistency."
+        )
+
     st.success(f"Export complete (run {run_id}).")
     return True
 
@@ -581,6 +633,9 @@ def _render_export_stage(options: dict) -> None:
     # QC surface
     if st.session_state.export_last_ok:
         _render_run_summary()
+        _render_export_artifact_summary()
+        if st.session_state.export_integrity_warning:
+            st.warning(st.session_state.export_integrity_warning)
         _render_part_report()
 
         if st.session_state.pdf_paths:
@@ -591,7 +646,7 @@ def _render_export_stage(options: dict) -> None:
         if st.session_state.zip_path and Path(st.session_state.zip_path).exists():
             zip_bytes = Path(st.session_state.zip_path).read_bytes()
             st.download_button(
-                "Download ZIP",
+                f"Download ZIP ({Path(st.session_state.zip_path).name})",
                 data=zip_bytes,
                 file_name=Path(st.session_state.zip_path).name,
                 mime="application/zip",
@@ -625,6 +680,7 @@ def main() -> None:
                 "run_id",
                 "run_dir",
                 "export_last_ok",
+                "export_integrity_warning",
             ):
                 if key in ("stems", "assignments", "midi_map", "score_data"):
                     st.session_state[key] = {}
@@ -632,6 +688,8 @@ def main() -> None:
                     st.session_state[key] = []
                 elif key == "export_last_ok":
                     st.session_state[key] = False
+                elif key == "export_integrity_warning":
+                    st.session_state[key] = ""
                 else:
                     st.session_state[key] = ""
             st.success("Workspace reset.")

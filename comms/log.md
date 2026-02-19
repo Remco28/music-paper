@@ -152,3 +152,8 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-19 16:40] [Architect]: REVIEW PASS: Phase 6 accepted. Manifest outcome fields and run-history panel meet traceability requirements with graceful corrupt-manifest handling.
 [2026-02-19 16:40] [Architect]: SPEC ARCHIVED: Moved phase-6 spec to archive.
 [2026-02-19 16:40] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-7-export-ergonomics-and-audit-polish.md.
+
+[2026-02-19 16:43] [Developer]: IMPL DONE (Phase 7): Added run-ID ZIP naming, export artifact summary (filename/size/run), and non-blocking export integrity warning against manifest outcome counts.
+[2026-02-19 16:43] [Architect]: REVIEW PASS: Phase 7 accepted. Export naming, summary visibility, and audit warning behavior meet ergonomics/audit criteria.
+[2026-02-19 16:43] [Architect]: SPEC ARCHIVED: Moved phase-7 spec to archive.
+[2026-02-19 16:43] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-8-history-filtering-and-manifest-resilience.md.

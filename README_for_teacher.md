@@ -62,6 +62,7 @@ streamlit run app.py --server.headless true --server.port 8501
 ## Reviewing and Rerunning
 - Use **Quick Rerun** to try different simplification settings without re-uploading audio or re-separating stems. Each rerun gets its own isolated output.
 - The app shows a compact run summary after export (run ID + exported/skipped part counts).
+- ZIP exports include a run-ID suffix: `<song_title>_<run_id>_exports.zip`.
 - Last-used score options are remembered during the session so repeated runs are faster.
 
 ## Verifying Your Setup
@@ -80,6 +81,7 @@ This performs import checks, config invariant checks, and manifest schema sanity
 Troubleshooting guide:
 - `docs/troubleshooting.md`
 - `docs/run-history.md`
+- `docs/export-verification.md`
 
 ## Notes
 - No login/authentication in MVP.

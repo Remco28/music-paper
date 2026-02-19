@@ -40,6 +40,13 @@ def zip_outputs(paths: list[str], zip_path: str) -> str:
     return str(zip_file)
 
 
+def part_report_counts(part_report: list[dict]) -> tuple[int, int]:
+    """Return exported/skipped counts from a part report list."""
+    exported = sum(1 for part in part_report if part.get("status") == "exported")
+    skipped = sum(1 for part in part_report if part.get("status") != "exported")
+    return exported, skipped
+
+
 # --- Phase 2 additions ---
 
 
@@ -152,6 +159,7 @@ def write_run_manifest(
     zip_filename: str,
 ) -> str:
     """Write a JSON manifest summarizing a pipeline run."""
+    exported_count, skipped_count = part_report_counts(part_report)
     manifest = {
         "run_id": run_id,
         "timestamp": datetime.now().isoformat(),
@@ -165,8 +173,8 @@ def write_run_manifest(
         },
         "pipeline": pipeline,
         "outcome": {
-            "exported_part_count": sum(1 for part in part_report if part.get("status") == "exported"),
-            "skipped_part_count": sum(1 for part in part_report if part.get("status") != "exported"),
+            "exported_part_count": exported_count,
+            "skipped_part_count": skipped_count,
             "zip_filename": zip_filename,
         },
         "assignments": assignments,

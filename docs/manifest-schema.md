@@ -34,7 +34,7 @@ This document defines the JSON schema written to each run's `manifest.json`.
 ### `outcome`
 - `exported_part_count` (integer): Number of exported non-empty parts.
 - `skipped_part_count` (integer): Number of skipped parts.
-- `zip_filename` (string): ZIP artifact filename for this run.
+- `zip_filename` (string): ZIP artifact filename for this run, typically `<song_title>_<run_id>_exports.zip`.
 
 ### `parts[]`
 Each entry includes:
