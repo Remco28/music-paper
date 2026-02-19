@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build and packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Test and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Streamlit and local app state
+.streamlit/secrets.toml
+
+# Local runtime artifacts
+temp/
+outputs/
+downloads/
+logs/
+*.log
+*.tmp
+*.bak
+
+# Audio and generated score artifacts
+*.wav
+*.mp3
+*.aac
+*.m4a
+*.flac
+*.mid
+*.midi
+*.musicxml
+*.mscz
+*.pdf
+*.zip
+
+# Environment and OS/editor files
+.env
+.env.*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
