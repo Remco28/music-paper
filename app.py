@@ -63,6 +63,7 @@ def _init_state() -> None:
         "opt_quantize_grid": SIMPLIFY_PRESET["quantize_grid"],
         "opt_min_duration": float(SIMPLIFY_PRESET["min_note_duration_beats"]),
         "opt_density_threshold": int(SIMPLIFY_PRESET["density_threshold"]),
+        "export_last_ok": False,
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -101,6 +102,15 @@ def _show_stage_error(stage: str, exc: Exception, hint: str) -> None:
     summary = str(exc).strip().split("\n")[0] or exc.__class__.__name__
     st.error(f"{stage} failed: {summary}")
     st.caption(f"Next step: {hint}")
+
+
+def _clear_export_outputs() -> None:
+    """Invalidate last export artifacts before a new export attempt."""
+    st.session_state.musicxml_path = ""
+    st.session_state.pdf_paths = []
+    st.session_state.part_report = []
+    st.session_state.zip_path = ""
+    st.session_state.export_last_ok = False
 
 
 def _render_preflight() -> None:
@@ -388,7 +398,7 @@ def _render_part_report() -> None:
         st.caption("Skipped parts were either unassigned or contained no notes after processing.")
 
 
-def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, run_id: str) -> None:
+def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, run_id: str) -> bool:
     """Execute the transcribe -> score -> PDF -> manifest -> ZIP pipeline."""
     try:
         with st.spinner("Transcribing stems with Basic Pitch..."):
@@ -399,7 +409,7 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
             exc,
             "Verify `basic-pitch` is installed and stems are valid WAV files, then retry.",
         )
-        return
+        return False
     try:
         with st.spinner("Building score..."):
             st.session_state.score_data = build_score(
@@ -415,7 +425,7 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
             exc,
             "Check assignments and simplification settings, then rerun.",
         )
-        return
+        return False
     try:
         with st.spinner("Rendering PDFs with MuseScore..."):
             render_result = render_pdfs(st.session_state.score_data)
@@ -427,7 +437,7 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
             exc,
             "Verify `mscore` is available and exported parts contain notes.",
         )
-        return
+        return False
 
     # Build unassigned-stem entries for manifest
     all_part_report = list(st.session_state.part_report)
@@ -457,7 +467,7 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
             exc,
             "Check write permissions for the run directory and retry export.",
         )
-        return
+        return False
 
     try:
         # Package ZIP (PDFs + MusicXML + manifest)
@@ -472,8 +482,9 @@ def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, ru
             exc,
             "Check output directory permissions and available disk space, then retry.",
         )
-        return
+        return False
     st.success(f"Export complete (run {run_id}).")
+    return True
 
 
 def _render_export_stage(options: dict) -> None:
@@ -501,51 +512,60 @@ def _render_export_stage(options: dict) -> None:
             st.error("Assign at least one stem to an instrument.")
             return
         try:
+            _clear_export_outputs()
             run_dir = _current_run_dir()
             if not run_dir:
                 st.error("No active run. Prepare audio input first.")
                 return
-            _run_export(options, assigned_stems, run_dir, st.session_state.run_id)
+            st.session_state.export_last_ok = _run_export(
+                options, assigned_stems, run_dir, st.session_state.run_id
+            )
         except Exception as exc:
             _show_stage_error(
                 "Export pipeline",
                 exc,
                 "Retry export; if it persists, run preflight checks and review Diagnostics.",
             )
+            st.session_state.export_last_ok = False
             return
 
     # Quick Rerun — reuse stems + assignments with new run ID and current settings
     if st.session_state.midi_map and assigned_stems:
         if st.button("Quick Rerun (new settings, same stems)", use_container_width=True):
             try:
+                _clear_export_outputs()
                 new_run_dir = _new_run()  # updates session_state.run_id
-                _run_export(options, assigned_stems, new_run_dir, st.session_state.run_id)
+                st.session_state.export_last_ok = _run_export(
+                    options, assigned_stems, new_run_dir, st.session_state.run_id
+                )
             except Exception as exc:
                 _show_stage_error(
                     "Quick rerun",
                     exc,
                     "Retry with current stems/assignments or restart from input if needed.",
                 )
+                st.session_state.export_last_ok = False
                 return
 
     # QC surface
-    _render_run_summary()
-    _render_part_report()
+    if st.session_state.export_last_ok:
+        _render_run_summary()
+        _render_part_report()
 
-    if st.session_state.pdf_paths:
-        st.write("Generated PDFs:")
-        for path in st.session_state.pdf_paths:
-            st.write(f"- {Path(path).name}")
+        if st.session_state.pdf_paths:
+            st.write("Generated PDFs:")
+            for path in st.session_state.pdf_paths:
+                st.write(f"- {Path(path).name}")
 
-    if st.session_state.zip_path and Path(st.session_state.zip_path).exists():
-        zip_bytes = Path(st.session_state.zip_path).read_bytes()
-        st.download_button(
-            "Download ZIP",
-            data=zip_bytes,
-            file_name=Path(st.session_state.zip_path).name,
-            mime="application/zip",
-            use_container_width=True,
-        )
+        if st.session_state.zip_path and Path(st.session_state.zip_path).exists():
+            zip_bytes = Path(st.session_state.zip_path).read_bytes()
+            st.download_button(
+                "Download ZIP",
+                data=zip_bytes,
+                file_name=Path(st.session_state.zip_path).name,
+                mime="application/zip",
+                use_container_width=True,
+            )
 
 
 def main() -> None:
@@ -573,11 +593,14 @@ def main() -> None:
                 "zip_path",
                 "run_id",
                 "run_dir",
+                "export_last_ok",
             ):
                 if key in ("stems", "assignments", "midi_map", "score_data"):
                     st.session_state[key] = {}
                 elif key in ("pdf_paths", "part_report"):
                     st.session_state[key] = []
+                elif key == "export_last_ok":
+                    st.session_state[key] = False
                 else:
                     st.session_state[key] = ""
             st.success("Workspace reset.")

@@ -139,3 +139,11 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-19 16:27] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-5-output-quality-and-failure-clarity.md.
 
 [2026-02-19 16:29] [Developer]: IMPL DONE (Phase 5): Added actionable part-skip guidance, simplification guardrails, structured stage-level error messaging, and docs/troubleshooting.md.
+
+[2026-02-19 16:31] [Architect]: REVIEW FAIL (Phase 5): Stale success artifact regression. Failed export can still show prior run summary/download due to internal early returns without UI-state invalidation/gating.
+[2026-02-19 16:31] [Architect]: REVISION SPEC READY: Added comms/tasks/2026-02-19-phase-5-revision-1.md.
+
+[2026-02-19 16:33] [Developer]: IMPL DONE (Phase 5 Revision 1): Added explicit export success contract, stale output invalidation at export start, and success-surface render gating.
+[2026-02-19 16:33] [Architect]: REVIEW PASS: Phase 5 accepted after Revision 1. Failure-state integrity now prevents stale artifacts from appearing after failed export/rerun attempts.
+[2026-02-19 16:33] [Architect]: SPEC ARCHIVED: Moved phase-5 spec and phase-5-revision-1 spec to archive.
+[2026-02-19 16:33] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-6-manifest-quality-and-run-history.md.
