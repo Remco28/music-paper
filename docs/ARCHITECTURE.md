@@ -20,7 +20,9 @@ This document is the short system map for the MVP. It describes component bounda
 
 ### Storage / Runtime Directories
 - **Temporary working files**: `temp/`
-- **Exported artifacts**: `outputs/` (optional persisted copies)
+- **Run-scoped work dirs**: `temp/runs/<run_id>/` (audio/stems/midi/musicxml + manifest)
+- **Exported PDFs**: `outputs/<run_id>/` (run-scoped to avoid cross-run collisions)
+- **ZIP artifacts**: `downloads/`
 - **No remote data store** and **no cloud services** in MVP.
 
 ## Process Architecture
@@ -70,6 +72,7 @@ Teacher submits single-video URL
 - **Output Contract**:
   - 1 conductor score PDF (concert pitch)
   - N part PDFs where parts are both assigned and non-empty
+  - Run manifest (`manifest.json`) with outcome/status/warning traceability
   - Packaged ZIP for download
 
 ## Authentication & Authorization
@@ -112,5 +115,7 @@ Each integration must surface actionable errors to the UI stage where it fails.
 ## Related Docs
 - Plan: `docs/plan.md`
 - Manifest: `project-manifest.md`
-- Active spec: `comms/tasks/2026-02-19-mvp-foundation-spec.md`
+- Current phase spec: `comms/tasks/2026-02-19-phase-36-documentation-and-handoff-consolidation.md`
+- Benchmark worksheet: `docs/benchmark-3-song-pass.md`
+- Release gates: `docs/release-checklist.md`
 - Activity log: `comms/log.md`

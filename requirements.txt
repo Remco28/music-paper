@@ -6,3 +6,4 @@ demucs
 basic-pitch
 music21>=9.9.1
 Pillow
+pypdf

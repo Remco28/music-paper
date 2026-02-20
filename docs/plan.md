@@ -7,6 +7,12 @@
 **Priority**: Maximum transcription quality (stem separation + clean MIDI + perfect transposition)  
 **No paid APIs**, no cloud, no batch/library features  
 
+## 2026-02-20 Addendum: Calibration Track
+- We are adding a separate local-only **Tuning Lab** workflow for simplification calibration.
+- Strategy source of truth: `docs/tuning-lab-strategy-2026-02-20.md`.
+- First implementation phase: `comms/tasks/2026-02-20-phase-39-tuning-lab-mvp-spec.md`.
+- Production app remains the teacher-facing path; Tuning Lab is experiment-only.
+
 ### 1. Confirmed Requirements
 - **Input**: Clean MP3/AAC/WAV files (primary) + YouTube links (always visible, using yt-dlp audio-only).
 - **UI**: Browser-based (Streamlit running locally on http://localhost:8501), big buttons, wizard-style, no CLI.

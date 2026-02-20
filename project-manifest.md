@@ -12,6 +12,12 @@
 - Activity log: `comms/log.md`
 - Active task specs: `comms/tasks/`
 - Archived task specs: `comms/tasks/archive/`
+- MVP finalization status: `docs/mvp-finalization-2026-02-19.md`
+- Post-MVP backlog: `docs/post-mvp-backlog.md`
+- Tuning strategy baseline: `docs/tuning-lab-strategy-2026-02-20.md`
+- Tuning Lab implementation spec: `comms/tasks/2026-02-20-phase-39-tuning-lab-mvp-spec.md`
+- Supported input policy: `docs/supported-input-policy.md`
+- Success optimization spec: `comms/tasks/2026-02-20-phase-40-fit-gating-and-success-optimization.md`
 
 ## 3. Code & Config Entrypoints
 - Main Streamlit app: `app.py`

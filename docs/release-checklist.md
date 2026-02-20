@@ -17,6 +17,8 @@ Use this checklist before handing a build to the teacher.
 - [ ] Single-video YouTube pipeline run completes
 - [ ] Preflight gate blocks run when tools are missing
 - [ ] Quick rerun generates a new run ID and isolated output folder
+- [ ] Three-song benchmark worksheet completed: `docs/benchmark-3-song-pass.md`
+- [ ] Benchmark decision is PASS (or blockers are explicitly documented)
 
 ## Artifact Validation
 - [ ] ZIP contains conductor PDF
@@ -24,7 +26,9 @@ Use this checklist before handing a build to the teacher.
 - [ ] ZIP contains full-score MusicXML
 - [ ] ZIP contains `manifest.json`
 - [ ] `manifest.json` includes: `run_id`, `timestamp`, `input`, `options`, `pipeline`, `assignments`, `parts`, `tool_versions`
+- [ ] `manifest.json` outcome includes: `success`, `integrity_warnings`, `failure_stage`, `failure_summary`
 
 ## Sign-off
 - [ ] Notes/issues captured in `comms/log.md`
 - [ ] Commit includes updated docs/spec references when applicable
+- [ ] Benchmark evidence and decision captured in `docs/benchmark-3-song-pass.md`

@@ -8,6 +8,14 @@ Each successful export uses:
 
 This avoids ambiguity between multiple runs of the same song.
 
+## PDF Output Isolation
+
+Rendered PDFs are written to:
+
+- `outputs/<run_id>/`
+
+This prevents cross-run PDF overwrites when titles/instrument names repeat across runs.
+
 ## Quick Verification Steps
 
 1. Confirm the app summary shows:
@@ -24,6 +32,17 @@ This avoids ambiguity between multiple runs of the same song.
    - `exported_part_count`
    - `skipped_part_count`
    - `zip_filename`
+
+## Built-In Consistency Checks
+
+After ZIP packaging, the app runs lightweight checks and surfaces non-blocking warnings if needed:
+
+- `manifest.json` exists inside ZIP
+- full-score MusicXML exists inside ZIP
+- packaged part-PDF count matches exported-part count
+- expected exported part PDF filenames are present
+
+Warnings are also persisted to `manifest.json` under `outcome.integrity_warnings` for later run-detail review.
 
 ## Notes
 

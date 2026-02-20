@@ -162,3 +162,198 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-19 16:46] [Architect]: REVIEW PASS: Phase 8 accepted. Filters work, missing/partial manifests default safely, and outcome.success is additive/backward-compatible.
 [2026-02-19 16:46] [Architect]: SPEC ARCHIVED: Moved phase-8 spec to archive.
 [2026-02-19 16:46] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-9-lightweight-ops-controls-and-cleanup.md.
+
+[2026-02-19 16:47] [Developer]: IMPL IN_PROGRESS (Phase 9): Adding maintenance cleanup panel with safe run-prune controls and docs/test updates.
+[2026-02-19 16:48] [Developer]: IMPL DONE (Phase 9): Added run artifact maintenance panel, safe prune helper (keep latest N + active run protection), and cleanup docs/smoke coverage.
+[2026-02-19 16:48] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-9 implementation against cleanup safety and acceptance criteria.
+[2026-02-19 16:48] [Architect]: REVIEW PASS: Phase 9 accepted. Confirmed explicit prune confirmation, active-run protection, deterministic keep-latest behavior, reclaimed-size reporting, and passing smoke checks.
+[2026-02-19 16:48] [Architect]: SPEC ARCHIVED: Moved phase-9 spec to comms/tasks/archive/.
+[2026-02-19 16:48] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-10-run-detail-inspection-and-artifact-reopen.md.
+[2026-02-19 16:50] [Developer]: IMPL IN_PROGRESS (Phase 10): Adding run-detail inspector and prior-zip reopen from manifest-backed recent runs.
+[2026-02-19 16:51] [Developer]: IMPL DONE (Phase 10): Added recent-run detail inspector, safe manifest loader statuses (ok/missing/corrupt), and prior ZIP reopen/download controls.
+[2026-02-19 16:51] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-10 run-detail/reopen behavior and resilience paths.
+[2026-02-19 16:51] [Architect]: REVIEW PASS: Phase 10 accepted. Selected-run details render from manifest, missing/corrupt/absent-ZIP cases are non-blocking, and smoke/compile checks pass.
+[2026-02-19 16:51] [Architect]: SPEC ARCHIVED: Moved phase-10 spec to comms/tasks/archive/.
+[2026-02-19 16:51] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-11-run-config-reapply-and-manifest-detail-polish.md.
+[2026-02-19 16:52] [Developer]: IMPL IN_PROGRESS (Phase 11): Adding selected-run part summary and apply-settings action for simplification options.
+[2026-02-19 16:53] [Developer]: IMPL DONE (Phase 11): Added selected-run part summary and one-click apply-settings action with safe validation for simplification options.
+[2026-02-19 16:53] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-11 run-config reapply and manifest detail behavior.
+[2026-02-19 16:53] [Architect]: REVIEW PASS: Phase 11 accepted. Option reapply updates only valid fields, part summary is resilient to malformed manifests, and compile/smoke checks pass.
+[2026-02-19 16:53] [Architect]: SPEC ARCHIVED: Moved phase-11 spec to comms/tasks/archive/.
+[2026-02-19 16:53] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-12-manifest-versioning-and-compatibility-guards.md.
+[2026-02-19 16:53] [Developer]: IMPL IN_PROGRESS (Phase 12): Implementing manifest schema versioning and compatibility normalization across readers/UI/docs/tests.
+[2026-02-19 16:55] [Developer]: IMPL DONE (Phase 12): Added manifest schema_version write path, normalization compatibility helper, and schema visibility in selected run details.
+[2026-02-19 16:55] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-12 schema versioning and compatibility behavior.
+[2026-02-19 16:55] [Architect]: REVIEW PASS: Phase 12 accepted. New manifests are versioned, legacy/unversioned manifests remain readable, and compile/smoke checks pass.
+[2026-02-19 16:55] [Architect]: SPEC ARCHIVED: Moved phase-12 spec to comms/tasks/archive/.
+[2026-02-19 16:55] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-13-history-search-and-limit-controls.md.
+[2026-02-19 16:56] [Developer]: IMPL IN_PROGRESS (Phase 13): Adding Recent Runs run-id search and configurable history-limit controls with resilient selection behavior.
+[2026-02-19 16:57] [Developer]: IMPL DONE (Phase 13): Added Recent Runs run-id search and history-limit controls (5/10/20) with stable selected-run behavior under filtering.
+[2026-02-19 16:57] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-13 history search/limit controls and selection resilience.
+[2026-02-19 16:57] [Architect]: REVIEW PASS: Phase 13 accepted. Search and bounded limit controls work with existing filters/details, and compile/smoke checks pass.
+[2026-02-19 16:57] [Architect]: SPEC ARCHIVED: Moved phase-13 spec to comms/tasks/archive/.
+[2026-02-19 16:57] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-14-manifest-and-zip-presence-health-surface.md.
+[2026-02-19 17:00] [Developer]: IMPL IN_PROGRESS (Phase 14): Adding Recent Runs health summary for manifest readability and ZIP presence across the filtered bounded set.
+[2026-02-19 17:00] [Developer]: IMPL DONE (Phase 14): Added Recent Runs health summary metrics for filtered bounded runs (manifest readability + ZIP presence).
+[2026-02-19 17:00] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-14 health surface integration and non-blocking behavior.
+[2026-02-19 17:00] [Architect]: REVIEW PASS: Phase 14 accepted. Health metrics are scoped and lightweight, existing run-detail workflows remain intact, and compile/smoke checks pass.
+[2026-02-19 17:00] [Architect]: SPEC ARCHIVED: Moved phase-14 spec to comms/tasks/archive/.
+[2026-02-19 17:00] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-15-recent-runs-copyable-summary-and-session-note.md.
+[2026-02-19 17:01] [Developer]: IMPL IN_PROGRESS (Phase 15): Adding session note and copyable Recent Runs operational summary block.
+[2026-02-19 17:01] [Developer]: IMPL DONE (Phase 15): Added session-note input and copyable Recent Runs summary block (filters, health, run lines, optional note).
+[2026-02-19 17:01] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-15 copyable summary behavior and non-destructive guarantees.
+[2026-02-19 17:01] [Architect]: REVIEW PASS: Phase 15 accepted. Summary is session-only/non-destructive, reflects current filters and health metrics, and compile/smoke checks pass.
+[2026-02-19 17:01] [Architect]: SPEC ARCHIVED: Moved phase-15 spec to comms/tasks/archive/.
+[2026-02-19 17:01] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-16-diagnostics-copyable-environment-snapshot.md.
+[2026-02-19 17:02] [Developer]: IMPL IN_PROGRESS (Phase 16): Adding copyable Diagnostics environment snapshot and troubleshooting doc guidance.
+[2026-02-19 17:03] [Developer]: IMPL DONE (Phase 16): Added Copyable Diagnostics Summary in Diagnostics panel using current environment/tool data.
+[2026-02-19 17:03] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-16 diagnostics snapshot behavior and non-destructive constraints.
+[2026-02-19 17:03] [Architect]: REVIEW PASS: Phase 16 accepted. Diagnostics snapshot is copy-friendly/session-local and compile/smoke checks pass.
+[2026-02-19 17:03] [Architect]: SPEC ARCHIVED: Moved phase-16 spec to comms/tasks/archive/.
+[2026-02-19 17:03] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-17-preflight-snapshot-and-change-indicator.md.
+[2026-02-19 17:06] [Developer]: IMPL IN_PROGRESS (Phase 17): Added preflight snapshot capture and changed/unchanged indicator using tool status + resolved paths.
+[2026-02-19 17:06] [Developer]: IMPL DONE (Phase 17): Added session preflight baseline/snapshot comparison and changed-tool indicator messaging.
+[2026-02-19 17:06] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-17 preflight snapshot/change indicator behavior.
+[2026-02-19 17:06] [Architect]: REVIEW PASS: Phase 17 accepted. Indicator correctly reports baseline/no-change/changed tools, remains non-blocking, and validation checks pass.
+[2026-02-19 17:06] [Architect]: SPEC ARCHIVED: Moved phase-17 spec to comms/tasks/archive/.
+[2026-02-19 17:06] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-18-preflight-staleness-and-reminder-surface.md.
+[2026-02-19 17:07] [Developer]: IMPL IN_PROGRESS (Phase 18): Adding preflight freshness timestamp/age indicator and stale reminder with diagnostics snapshot integration.
+[2026-02-19 17:08] [Developer]: IMPL DONE (Phase 18): Added preflight freshness (last-run timestamp + age), stale reminder, and diagnostics snapshot freshness lines.
+[2026-02-19 17:08] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-18 preflight staleness/reminder behavior and diagnostics integration.
+[2026-02-19 17:08] [Architect]: REVIEW PASS: Phase 18 accepted. Freshness context and stale reminders are advisory/non-blocking, diagnostics include preflight timing, and validation checks pass.
+[2026-02-19 17:08] [Architect]: SPEC ARCHIVED: Moved phase-18 spec to comms/tasks/archive/.
+[2026-02-19 17:08] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-19-reset-workspace-safety-confirmation.md.
+[2026-02-19 17:09] [Developer]: IMPL IN_PROGRESS (Phase 19): Adding reset workspace impact preview and explicit confirmation gate.
+[2026-02-19 17:10] [Developer]: IMPL DONE (Phase 19): Added reset impact preview + explicit confirmation gate; preserved reset semantics post-confirmation.
+[2026-02-19 17:10] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-19 reset safety confirmation and impact preview behavior.
+[2026-02-19 17:10] [Architect]: REVIEW PASS: Phase 19 accepted. Reset is now confirmation-gated with clear preview, remains deterministic, and validation checks pass.
+[2026-02-19 17:10] [Architect]: SPEC ARCHIVED: Moved phase-19 spec to comms/tasks/archive/.
+[2026-02-19 17:10] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-20-run-history-export-csv-lite.md.
+[2026-02-19 17:14] [Developer]: IMPL IN_PROGRESS (Phase 20): Adding scoped Recent Runs CSV download from current filtered record set.
+[2026-02-19 17:15] [Developer]: IMPL DONE (Phase 20): Added Recent Runs CSV export for current filtered set with deterministic columns and timestamped filename.
+[2026-02-19 17:15] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-20 scoped CSV export behavior and compatibility with existing history panel features.
+[2026-02-19 17:15] [Architect]: REVIEW PASS: Phase 20 accepted. CSV export is correctly scoped/non-destructive with stable columns, and validation checks pass.
+[2026-02-19 17:15] [Architect]: SPEC ARCHIVED: Moved phase-20 spec to comms/tasks/archive/.
+[2026-02-19 17:15] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-21-history-table-clarity-polish.md.
+[2026-02-19 17:16] [Developer]: IMPL IN_PROGRESS (Phase 21): Applying Recent Runs table presentation polish (labels/status wording/truncation) with no behavior changes.
+[2026-02-19 17:16] [Developer]: IMPL DONE (Phase 21): Polished Recent Runs table headers/status wording/truncation for readability with no behavior changes.
+[2026-02-19 17:16] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-21 presentation-layer table clarity changes.
+[2026-02-19 17:16] [Architect]: REVIEW PASS: Phase 21 accepted. Readability improved with explicit outcome/manifest/ZIP labels and no regressions in history behavior.
+[2026-02-19 17:16] [Architect]: SPEC ARCHIVED: Moved phase-21 spec to comms/tasks/archive/.
+[2026-02-19 17:16] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-22-run-outcome-status-contract-tightening.md.
+[2026-02-19 17:17] [Developer]: IMPL IN_PROGRESS (Phase 22): Centralizing outcome status derivation (success/failed/unknown) in manifest normalization and propagating to UI filters/details/docs/tests.
+[2026-02-19 17:18] [Developer]: IMPL DONE (Phase 22): Tightened normalized run outcome status contract to success/failed/unknown across read paths, filters, and detail surfaces.
+[2026-02-19 17:18] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-22 status contract tightening and backward compatibility behavior.
+[2026-02-19 17:18] [Architect]: REVIEW PASS: Phase 22 accepted. Failed runs are now distinguishable from unknown legacy runs, UI filters include failed, and validation checks pass.
+[2026-02-19 17:18] [Architect]: SPEC ARCHIVED: Moved phase-22 spec to comms/tasks/archive/.
+[2026-02-19 17:18] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-23-input-validation-hardening.md.
+[2026-02-19 17:19] [Developer]: IMPL IN_PROGRESS (Phase 23): Hardening local-file and YouTube URL validation at input stage with clear fail-fast guidance.
+[2026-02-19 17:20] [Developer]: IMPL DONE (Phase 23): Added fail-fast local upload and YouTube URL validation with clearer actionable input errors.
+[2026-02-19 17:20] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-23 input validation hardening and behavior preservation.
+[2026-02-19 17:20] [Architect]: REVIEW PASS: Phase 23 accepted. Invalid input now fails early with clear guidance while valid paths remain unchanged; validation checks pass.
+[2026-02-19 17:20] [Architect]: SPEC ARCHIVED: Moved phase-23 spec to comms/tasks/archive/.
+[2026-02-19 17:20] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-24-assignment-safety-guards.md.
+[2026-02-19 17:21] [Developer]: IMPL IN_PROGRESS (Phase 24): Adding assignment safety guards (minimum blocking check + non-blocking quality warnings).
+[2026-02-19 17:21] [Developer]: IMPL DONE (Phase 24): Added assignment safety guards (coverage summary, non-blocking quality warnings, and explicit minimum-assignment block at export).
+[2026-02-19 17:21] [Architect]: REVIEW IN_PROGRESS: Reviewing Phase-24 assignment safety guard behavior and workflow compatibility.
+[2026-02-19 17:21] [Architect]: REVIEW PASS: Phase 24 accepted. Minimum assignment block and warning surfaces behave as intended without over-constraining valid workflows.
+[2026-02-19 17:21] [Architect]: SPEC ARCHIVED: Moved phase-24 spec to comms/tasks/archive/.
+[2026-02-19 17:21] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-25-export-package-consistency-checks.md.
+[2026-02-19 17:26] [Architect]: REVIEW COMPLETE: Added broad health assessment at docs/health-review-2026-02-19.md with prioritized risks and stabilization recommendations.
+[2026-02-19 17:26] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-pre-final-stabilization-package.md.
+[2026-02-19 17:26] [Architect]: SPEC READY: Added STAB-1..STAB-4 specs for diagnostics performance, URL rule unification, PDF isolation hardening, and smoke expansion.
+[2026-02-19 17:26] [Architect]: SEQUENCE UPDATE: Phase 25 feature work deferred until stabilization package completion.
+[2026-02-19 17:31] [Developer]: IMPL DONE (STAB-1): Hardened Diagnostics probe overhead via session-scoped probe cache + explicit refresh action + probe timestamp surface.
+[2026-02-19 17:31] [Architect]: REVIEW PASS (STAB-1): Diagnostics remains functionally equivalent while avoiding repeated subprocess probes on ordinary rerenders.
+[2026-02-19 17:31] [Developer]: IMPL DONE (STAB-2): Unified source/YouTube URL validation/classification in utils and applied consistently across app input gating and pipeline source handling.
+[2026-02-19 17:31] [Architect]: REVIEW PASS (STAB-2): App/pipeline source decisions now align for the same URL inputs with single-video constraints preserved.
+[2026-02-19 17:31] [Developer]: IMPL DONE (STAB-3): Made PDF rendering run-scoped (`outputs/<run_id>/`) and wired export orchestration to pass run_id; updated export verification docs.
+[2026-02-19 17:31] [Architect]: REVIEW PASS (STAB-3): Cross-run PDF overwrite risk removed while preserving ZIP packaging and manifest traceability.
+[2026-02-19 17:31] [Developer]: IMPL DONE (STAB-4): Expanded smoke coverage to include outcome-status contract assertions and deterministic source-validation helper checks.
+[2026-02-19 17:31] [Architect]: REVIEW PASS (STAB-4): Stabilization package complete; compile and smoke checks pass in project venv.
+[2026-02-19 17:31] [Architect]: PHASE SEQUENCING UPDATE: Pre-final stabilization package accepted; Phase 25 may resume on stabilized baseline.
+[2026-02-19 17:35] [Developer]: IMPL DONE (Phase 25): Added post-package ZIP consistency checks (manifest/full-score MusicXML presence + part-PDF count/name alignment) with non-blocking warning surface reuse.
+[2026-02-19 17:35] [Developer]: DOCS/TESTS UPDATED (Phase 25): Updated docs/export-verification.md and expanded smoke coverage for ZIP inspection helper.
+[2026-02-19 17:35] [Architect]: REVIEW PASS (Phase 25): Export packaging trust checks are in place, non-destructive, and existing validation gates pass.
+[2026-02-19 17:39] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-26-manifested-export-warning-traceability.md.
+[2026-02-19 17:39] [Developer]: IMPL DONE (Phase 26): Persisted export/package warning list to manifest outcome (`integrity_warnings`) and surfaced warning summary in selected-run details.
+[2026-02-19 17:39] [Developer]: DOCS/TESTS UPDATED (Phase 26): Updated manifest/export docs and expanded smoke coverage for integrity warning normalization + persistence helper.
+[2026-02-19 17:39] [Architect]: REVIEW PASS (Phase 26): Warning traceability is additive/backward-compatible and compile/smoke checks pass.
+[2026-02-19 17:42] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-27-recent-runs-warning-visibility-and-filtering.md.
+[2026-02-19 17:42] [Developer]: IMPL DONE (Phase 27): Added Recent Runs warning-state filter and warning-count visibility across table, copy summary, health caption, and CSV export.
+[2026-02-19 17:42] [Developer]: DOCS UPDATED (Phase 27): Updated docs/run-history.md with warning count/filter/CSV field behavior.
+[2026-02-19 17:42] [Architect]: REVIEW PASS (Phase 27): Warning presence is now first-class in run history while preserving additive, backward-compatible behavior.
+[2026-02-19 17:43] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-28-warning-triage-rollups-and-preview.md.
+[2026-02-19 17:43] [Developer]: IMPL DONE (Phase 28): Added warning preview and warning-category rollup surfaces in Recent Runs table, health caption, copy summary, and CSV export.
+[2026-02-19 17:43] [Developer]: DOCS UPDATED (Phase 28): Updated docs/run-history.md with warning preview/rollup/CSV behavior.
+[2026-02-19 17:43] [Architect]: REVIEW PASS (Phase 28): Warning triage context is richer while preserving existing warning generation and compatibility behavior.
+[2026-02-19 17:45] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-29-warning-category-filter-and-selected-run-digest.md.
+[2026-02-19 17:45] [Developer]: IMPL DONE (Phase 29): Added warning category query filter, warning categories table column, and selected-run copyable warning digest.
+[2026-02-19 17:45] [Developer]: DOCS UPDATED (Phase 29): Updated docs/run-history.md for warning category filter and warning digest behavior.
+[2026-02-19 17:45] [Architect]: REVIEW PASS (Phase 29): Warning triage depth improved without changing warning generation or export contracts; validations pass.
+[2026-02-19 17:47] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-30-run-history-sort-and-filter-first-limiting.md.
+[2026-02-19 17:47] [Developer]: IMPL DONE (Phase 30): Added Recent Runs sort mode and changed processing order to filter/sort first, then apply history limit; updated summary/count surfaces accordingly.
+[2026-02-19 17:47] [Developer]: DOCS UPDATED (Phase 30): Updated docs/run-history.md for sort options and filter-first limit behavior.
+[2026-02-19 17:47] [Architect]: REVIEW PASS (Phase 30): Discoverability improved (no pre-limit filter blind spots) with deterministic sorting and no regressions in validation checks.
+[2026-02-19 17:51] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-31-recent-runs-manifest-cache-and-refresh-control.md.
+[2026-02-19 17:51] [Developer]: IMPL DONE (Phase 31): Added session-scoped Recent Runs manifest cache with auto-refresh on run/manifest signature changes and explicit Refresh Run Cache control.
+[2026-02-19 17:51] [Developer]: DOCS UPDATED (Phase 31): Updated docs/run-history.md with run-cache refresh behavior and timestamp surface.
+[2026-02-19 17:51] [Architect]: REVIEW PASS (Phase 31): Recent Runs rerender overhead reduced while preserving existing filter/sort/CSV/detail behavior; validation checks pass.
+[2026-02-19 17:53] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-32-run-cache-auto-refresh-toggle-and-staleness-indicator.md.
+[2026-02-19 17:53] [Developer]: IMPL DONE (Phase 32): Added Auto Refresh Run Cache toggle, cache freshness age display, stale reminder, and signature-drift note when auto refresh is disabled.
+[2026-02-19 17:53] [Developer]: DOCS UPDATED (Phase 32): Updated docs/run-history.md for cache auto-refresh and staleness/drift behavior.
+[2026-02-19 17:53] [Architect]: REVIEW PASS (Phase 32): Cache-control behavior is explicit/non-blocking and existing Recent Runs workflows remain intact; validations pass.
+[2026-02-19 17:55] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-33-three-song-benchmark-evidence-pass.md.
+[2026-02-19 17:55] [Developer]: IMPL DONE (Phase 33): Added docs/benchmark-3-song-pass.md with 3-song protocol, severity rubric, per-song evidence capture, and final PASS/FAIL decision block.
+[2026-02-19 17:55] [Developer]: DOCS UPDATED (Phase 33): Integrated benchmark gating in docs/release-checklist.md and linked benchmark worksheet from README_for_teacher.md.
+[2026-02-19 17:55] [Architect]: REVIEW PASS (Phase 33): Benchmark evidence workflow is now defined and release-gated without introducing runtime complexity.
+[2026-02-19 17:58] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-34-core-workflow-ux-clarity-polish.md.
+[2026-02-19 17:58] [Developer]: IMPL DONE (Phase 34): Added top-level workflow snapshot and clarified core action labels/captions across input/stem/export stages.
+[2026-02-19 17:58] [Developer]: DOCS UPDATED (Phase 34): Updated README_for_teacher.md to reference workflow snapshot for stage readiness.
+[2026-02-19 17:58] [Architect]: REVIEW PASS (Phase 34): UX clarity improved with no pipeline behavior changes; validation checks pass.
+[2026-02-19 18:00] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-35-failure-traceability-and-failed-run-manifest-hardening.md.
+[2026-02-19 18:00] [Developer]: IMPL DONE (Phase 35): Added failed-run manifest hardening with outcome failure context fields (`failure_stage`, `failure_summary`) and best-effort failed-manifest persistence for export stage failures.
+[2026-02-19 18:00] [Developer]: DOCS/TESTS UPDATED (Phase 35): Updated manifest schema + troubleshooting docs and expanded smoke coverage for failure-context normalization/persistence helpers.
+[2026-02-19 18:00] [Architect]: REVIEW PASS (Phase 35): Failed runs now retain actionable manifest-backed context in run history/details while preserving backward compatibility and passing validations.
+[2026-02-19 18:04] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-36-documentation-and-handoff-consolidation.md.
+[2026-02-19 18:04] [Developer]: IMPL DONE (Phase 36): Consolidated teacher/maintainer docs to align with current workflow labels, run-history behavior, manifest outcome fields, and handoff sequence.
+[2026-02-19 18:04] [Developer]: DOCS UPDATED (Phase 36): Updated README_for_teacher.md, docs/ARCHITECTURE.md, docs/release-checklist.md, and docs/run-history.md.
+[2026-02-19 18:04] [Architect]: REVIEW PASS (Phase 36): Documentation now matches current app behavior through Phase 35 with a clear setup->benchmark->release handoff path.
+[2026-02-19 18:05] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-37-rc-freeze-and-validation-gate.md.
+[2026-02-19 18:05] [Developer]: VALIDATION RUN (Phase 37): py_compile PASS, smoke PASS, setup validator FAIL due missing external executables (`demucs`, `basic-pitch`, `mscore`, `ffmpeg`) on this environment PATH.
+[2026-02-19 18:05] [Developer]: REPORT READY (Phase 37): Added docs/release-candidate-report-2026-02-19.md with freeze policy, validation evidence, pending gates, and blocker list.
+[2026-02-19 18:05] [Architect]: REVIEW PASS (Phase 37): RC gate documentation is complete and actionable; final sign-off correctly deferred pending environment + benchmark gates.
+[2026-02-19 18:08] [Architect]: SPEC READY: Added comms/tasks/2026-02-19-phase-38-mvp-finalization-and-post-mvp-backlog.md.
+[2026-02-19 18:08] [Developer]: IMPL DONE (Phase 38): Added MVP finalization record and post-MVP prioritized backlog; updated project manifest pointers.
+[2026-02-19 18:08] [Developer]: VALIDATION (Phase 38): py_compile PASS and smoke PASS on current baseline.
+[2026-02-19 18:08] [Architect]: REVIEW PASS (Phase 38): MVP phase sequence is closed with explicit conditional readiness and actionable pending gates.
+[2026-02-19 18:31] [Architect]: REVISION PASS START: Applying targeted part-export correctness patch for title metadata and instrument-clef enforcement.
+[2026-02-19 18:31] [Developer]: IMPL DONE (Revision): Updated pipeline part export to apply explicit instrument + preferred clef policy and part-level metadata (title/composer) before MusicXML write.
+[2026-02-19 18:31] [Architect]: REVIEW PASS (Revision): py_compile + smoke passed; ready for in-app retest of clarinet clef/title correctness.
+[2026-02-19 18:42] [Architect]: REVISION PASS START: Addressing repeated "Instrument change" engraving artifact observed in regenerated PDFs.
+[2026-02-19 18:42] [Developer]: IMPL DONE (Revision): Normalized each part to a single instrument object (removed embedded MIDI-import instrument events), then applied notation cleanup (`makeNotation`) before MusicXML export.
+[2026-02-19 18:42] [Architect]: REVIEW PASS (Revision): py_compile + smoke passed; ready for re-export verification that instrument-change text no longer appears.
+[2026-02-19 19:07] [Developer]: IMPL DONE (Revision): Fixed percussion clef regression by routing percussion-family instruments (e.g., Snare Drum) to `PercussionClef` instead of treble clef.
+[2026-02-19 19:07] [Architect]: REVIEW PASS (Revision): End-to-end local generation rerun complete; no `Instrument change`/`Music21 Fragment` markers found in generated MusicXML, and snare part now emits percussion clef.
+[2026-02-20 10:12] [Developer]: TOOLING UPDATE: Added `pypdf` to requirements and validated PDF text-content checks for generated outputs (no `Instrument change` / `Music21 Fragment` markers detected).
+[2026-02-20 10:18] [Architect]: BACKLOG UPDATE: Deferred outputs/downloads artifact retention policy decisions; added explicit post-MVP TODO for separate retention controls.
+[2026-02-20 10:34] [Developer]: IMPL DONE (Revision): Fixed simplify pass no-op by enabling recursive quantization and stream-owned element mutation; corrected density bucketing to use part-global offsets.
+[2026-02-20 10:34] [Developer]: TESTING EVIDENCE: Profile benchmark now shows simplification effect on melody parts (off/conservative/balanced/aggressive produce distinct note-density outcomes).
+[2026-02-20 10:34] [Developer]: TESTS UPDATED: Added smoke guard `simplify part effectiveness` to prevent future no-op regressions.
+[2026-02-20 10:34] [Architect]: REVIEW PASS (Revision): py_compile + smoke pass; simplification behavior is now functionally active and measurable.
+[2026-02-20 10:52] [Developer]: IMPL DONE (UX): Added post-export Complexity Summary block (per-part difficulty, fast-note count, tuplet count, avg duration, page count) for teacher-facing simplification decisions.
+[2026-02-20 10:52] [Developer]: DOCS/VALIDATION: Updated README_for_teacher.md and verified py_compile + smoke pass.
+[2026-02-20 11:07] [Developer]: IMPL DONE (UX/Terminology): Renamed simplification profiles to `Beginner`, `Easy Intermediate` (default), and `Intermediate`.
+[2026-02-20 11:07] [Developer]: COMPATIBILITY: Added legacy profile alias mapping (`Aggressive`->`Beginner`, `Balanced`->`Easy Intermediate`, `Conservative`->`Intermediate`) for manifest option reapply.
+[2026-02-20 11:07] [Developer]: VALIDATION: py_compile + smoke pass; relabel comparison run confirms expected difficulty ordering and preserved title/clef/no-spam PDF quality.
+[2026-02-20 11:28] [Developer]: IMPL DONE (Revision): Added Beginner melody-aware cleanup + playability gate in pipeline with explicit `unplayable_beginner` skipped-part reason propagation.
+[2026-02-20 11:28] [Developer]: VALIDATION EVIDENCE: Replayed Laufey run artifacts; Beginner now blocks non-playable melodic parts (clarinet/sax/trombone) and exports safe subset; Easy Intermediate remains available for fuller draft output.
+[2026-02-20 11:28] [Developer]: UX POLISH: Complexity summary now reports accidental/leap metrics and ignores percussion for those pitch-based indicators.
+[2026-02-20 11:36] [Developer]: IMPL DONE (Labeling UX): Added `scripts/prepare_labeling_pack.py` to auto-generate student-friendly labeling CSV + markdown review packet from existing run manifests/part PDFs.
+[2026-02-20 11:36] [Developer]: DOCS UPDATED: Added `docs/labeling-playability.md` and linked it from README for quick reviewer onboarding.
+[2026-02-20 12:05] [Architect]: STRATEGY UPDATE: Adopted separate Tuning Lab calibration track; added durable strategy doc `docs/tuning-lab-strategy-2026-02-20.md`.
+[2026-02-20 12:05] [Architect]: SPEC READY: Added Phase 39 Tuning Lab MVP implementation spec `comms/tasks/2026-02-20-phase-39-tuning-lab-mvp-spec.md`.
+[2026-02-20 12:05] [Developer]: DOCS UPDATED: Linked Tuning Lab strategy/spec in `project-manifest.md` and added calibration addendum in `docs/plan.md`.
+[2026-02-20 12:26] [Architect]: POLICY UPDATE: Narrowed production target scope to beginner-focused classroom outcomes; added `docs/supported-input-policy.md`.
+[2026-02-20 12:26] [Developer]: IMPL DONE (UX Scope): Teacher simplification profile selector now exposes only `Beginner` and `Easy Intermediate`.
+[2026-02-20 12:26] [Architect]: SPEC READY: Added Phase 40 success-optimization spec `comms/tasks/2026-02-20-phase-40-fit-gating-and-success-optimization.md` (fit scoring + auto recommendation + two-pass + guardrails).

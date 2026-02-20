@@ -5,8 +5,8 @@ from __future__ import annotations
 import glob
 import shlex
 import subprocess
+import warnings
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
 
 from pydub import AudioSegment
 
@@ -19,7 +19,12 @@ from config import (
     TEMP_DIR,
     YOUTUBE_DOMAINS,
 )
-from utils import create_disclaimer_text, sanitize_filename
+from utils import (
+    classify_audio_source,
+    create_disclaimer_text,
+    sanitize_filename,
+    validate_single_video_youtube_url,
+)
 
 
 def _run(cmd: list[str]) -> None:
@@ -37,22 +42,6 @@ def _ensure_dirs() -> None:
     DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _is_youtube_url(source: str) -> bool:
-    try:
-        parsed = urlparse(source)
-    except ValueError:
-        return False
-    host = parsed.netloc.lower()
-    return any(domain in host for domain in YOUTUBE_DOMAINS)
-
-
-def _validate_single_video_url(source: str) -> None:
-    parsed = urlparse(source)
-    query = parse_qs(parsed.query)
-    if "list" in query:
-        raise ValueError("Playlists are not supported. Please provide a single-video URL.")
-
-
 def download_or_convert_audio(source: str, run_dir: Path | None = None) -> str:
     """Convert local audio file or YouTube URL into normalized wav."""
     _ensure_dirs()
@@ -60,9 +49,12 @@ def download_or_convert_audio(source: str, run_dir: Path | None = None) -> str:
     workdir.mkdir(parents=True, exist_ok=True)
     source = source.strip()
     output_wav = workdir / "input_normalized.wav"
+    source_kind = classify_audio_source(source, YOUTUBE_DOMAINS)
 
-    if _is_youtube_url(source):
-        _validate_single_video_url(source)
+    if source_kind == "youtube_url":
+        youtube_error = validate_single_video_youtube_url(source, YOUTUBE_DOMAINS)
+        if youtube_error:
+            raise ValueError(youtube_error)
         yt_template = str(workdir / "youtube_input.%(ext)s")
         _run(
             [
@@ -81,6 +73,8 @@ def download_or_convert_audio(source: str, run_dir: Path | None = None) -> str:
             raise RuntimeError("yt-dlp did not produce an audio file.")
         audio = AudioSegment.from_file(yt_files[0])
     else:
+        if source_kind == "remote_url":
+            raise ValueError("Only single-video YouTube URLs are supported for remote input.")
         input_path = Path(source)
         if not input_path.exists():
             raise FileNotFoundError(f"Audio source does not exist: {source}")
@@ -138,6 +132,26 @@ def _grid_to_divisor(grid: str) -> int:
     return mapping.get(grid, 2)
 
 
+def _suppress_known_music21_warnings() -> None:
+    """Mute noisy non-fatal music21 warnings that clutter Streamlit logs."""
+    try:
+        from music21 import beam
+
+        beam.environLocal["warnings"] = 0
+    except Exception:
+        pass
+    warnings.filterwarnings(
+        "ignore",
+        message=r"cannot access qLenPos .*",
+        category=UserWarning,
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=r"Cannot put in an element with a missing voice tag .*",
+        category=UserWarning,
+    )
+
+
 def _simplify_part(part_stream, options: dict) -> None:
     divisor = _grid_to_divisor(options.get("quantize_grid", "1/8"))
     min_duration = float(options.get("min_note_duration_beats", 0.25))
@@ -148,19 +162,158 @@ def _simplify_part(part_stream, options: dict) -> None:
         processOffsets=True,
         processDurations=True,
         inPlace=True,
+        recurse=True,
     )
 
-    flattened = part_stream.flatten()
+    # Work on stream-owned note/rest objects, not a flattened copy.
+    # Removing elements from flattened views does not reliably mutate the source stream.
+    flattened = part_stream.recurse()
     bucket_counts: dict[int, int] = {}
     for element in list(flattened.notesAndRests):
         if getattr(element, "isNote", False) or getattr(element, "isChord", False):
             if float(element.duration.quarterLength) < min_duration:
-                element.activeSite.remove(element)
+                if element.activeSite is not None:
+                    element.activeSite.remove(element)
                 continue
-            bucket = int(float(element.offset))
+            bucket = int(float(element.getOffsetInHierarchy(part_stream)))
             bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
             if bucket_counts[bucket] > density_threshold:
-                element.activeSite.remove(element)
+                if element.activeSite is not None:
+                    element.activeSite.remove(element)
+
+
+def _is_beginner_profile(options: dict) -> bool:
+    profile = str(options.get("profile", "")).strip()
+    return profile in {"Beginner", "Aggressive"}
+
+
+def _iter_melodic_notes(part_stream):
+    """Yield note-like elements in temporal order for melodic post-processing."""
+    for element in part_stream.recurse().notes:
+        if getattr(element, "isChord", False):
+            yield element
+        elif getattr(element, "isNote", False):
+            yield element
+
+
+def _primary_pitch_midi(element) -> int | None:
+    if getattr(element, "isChord", False):
+        pitches = list(getattr(element, "pitches", []) or [])
+        if not pitches:
+            return None
+        return int(min(p.midi for p in pitches))
+    if getattr(element, "isNote", False):
+        pitch_obj = getattr(element, "pitch", None)
+        if pitch_obj is None:
+            return None
+        return int(pitch_obj.midi)
+    return None
+
+
+def _set_element_to_midi(element, midi_value: int) -> None:
+    from music21 import pitch
+
+    new_pitch = pitch.Pitch()
+    new_pitch.midi = int(midi_value)
+    if getattr(element, "isChord", False):
+        element.pitches = (new_pitch,)
+    elif getattr(element, "isNote", False):
+        element.pitch = new_pitch
+
+
+def _nearest_scale_midi(target_midi: int, allowed_pitch_classes: set[int]) -> int:
+    candidates: list[int] = []
+    for delta in range(-2, 3):
+        candidate = int(target_midi + delta)
+        if candidate % 12 in allowed_pitch_classes:
+            candidates.append(candidate)
+    if not candidates:
+        return target_midi
+    return min(candidates, key=lambda value: abs(value - target_midi))
+
+
+def _playability_metrics(part_stream) -> dict[str, float]:
+    note_elements = list(_iter_melodic_notes(part_stream))
+    midi_line = [value for value in (_primary_pitch_midi(n) for n in note_elements) if value is not None]
+    note_count = len(note_elements)
+    if note_count == 0:
+        return {
+            "note_count": 0.0,
+            "accidental_density": 0.0,
+            "large_leap_rate": 0.0,
+            "short_note_rate": 0.0,
+        }
+
+    accidental_count = 0
+    short_count = 0
+    for element in note_elements:
+        if float(element.duration.quarterLength) <= 0.5:
+            short_count += 1
+        if getattr(element, "isChord", False):
+            pitches = list(getattr(element, "pitches", []) or [])
+            accidental_count += sum(1 for p in pitches if p.accidental is not None)
+        elif getattr(element, "isNote", False):
+            pitch_obj = getattr(element, "pitch", None)
+            if pitch_obj is not None and pitch_obj.accidental is not None:
+                accidental_count += 1
+
+    leaps = [abs(curr - prev) for prev, curr in zip(midi_line, midi_line[1:])]
+    large_leap_count = sum(1 for size in leaps if size >= 8)
+
+    return {
+        "note_count": float(note_count),
+        "accidental_density": float(accidental_count / note_count),
+        "large_leap_rate": float(large_leap_count / max(1, len(leaps))),
+        "short_note_rate": float(short_count / note_count),
+    }
+
+
+def _apply_beginner_melody_filter(part_stream) -> dict[str, float]:
+    """Apply additional melody-aware cleanup for beginner readability."""
+    from music21 import key
+
+    notes = list(_iter_melodic_notes(part_stream))
+    if not notes:
+        return _playability_metrics(part_stream)
+
+    # Remove very short ornament-like events.
+    for element in list(notes):
+        if float(element.duration.quarterLength) < 0.5 and element.activeSite is not None:
+            element.activeSite.remove(element)
+
+    notes = list(_iter_melodic_notes(part_stream))
+    if not notes:
+        return _playability_metrics(part_stream)
+
+    # Favor diatonic pitches of the local key to reduce accidental noise.
+    try:
+        analyzed_key = part_stream.analyze("key")
+    except Exception:
+        analyzed_key = key.Key("C")
+    allowed_pitch_classes = set(int(p.pitchClass) for p in analyzed_key.getScale().pitches)
+    for element in notes:
+        base = _primary_pitch_midi(element)
+        if base is None:
+            continue
+        snapped = _nearest_scale_midi(base, allowed_pitch_classes)
+        _set_element_to_midi(element, snapped)
+
+    # Clamp leaps by octave-folding toward the previous pitch.
+    notes = list(_iter_melodic_notes(part_stream))
+    previous_midi: int | None = None
+    for element in notes:
+        current_midi = _primary_pitch_midi(element)
+        if current_midi is None:
+            continue
+        if previous_midi is not None:
+            while current_midi - previous_midi > 7:
+                current_midi -= 12
+            while previous_midi - current_midi > 7:
+                current_midi += 12
+            _set_element_to_midi(element, current_midi)
+        previous_midi = current_midi
+
+    return _playability_metrics(part_stream)
 
 
 def build_score(
@@ -175,7 +328,7 @@ def build_score(
     """
     import copy
 
-    from music21 import converter, expressions, interval, metadata, stream
+    from music21 import clef, converter, expressions, instrument, interval, metadata, stream
 
     _ensure_dirs()
     workdir = run_dir or TEMP_DIR
@@ -190,7 +343,50 @@ def build_score(
     part_dir = workdir / "part_exports"
     part_dir.mkdir(parents=True, exist_ok=True)
     transposed_parts: dict[str, str] = {}
+    skipped_parts: list[dict] = []
     instrument_counts: dict[str, int] = {}
+    percussion_family_tokens = ("Snare", "Bass Drum", "Percussion", "Auxiliary")
+    treble_family_tokens = (
+        "Flute",
+        "Oboe",
+        "Clarinet",
+        "Sax",
+        "Trumpet",
+        "Horn",
+        "Mallets",
+        "Timpani",
+    )
+    bass_family_tokens = ("Tuba", "Trombone", "Bassoon", "Euphonium")
+
+    def _preferred_clef_for_instrument(name: str):
+        if any(token in name for token in percussion_family_tokens):
+            return clef.PercussionClef()
+        if any(token in name for token in bass_family_tokens):
+            return clef.BassClef()
+        if any(token in name for token in treble_family_tokens):
+            return clef.TrebleClef()
+        return None
+
+    def _apply_instrument_and_clef(part_obj, name: str) -> None:
+        # MIDI imports may include many embedded instrument-change markers.
+        # Normalize to exactly one instrument at offset 0 for clean engraving.
+        for existing_instrument in list(part_obj.recurse().getElementsByClass(instrument.Instrument)):
+            try:
+                existing_instrument.activeSite.remove(existing_instrument)
+            except Exception:
+                pass
+        try:
+            part_obj.insert(0, instrument.fromString(name))
+        except Exception:
+            pass
+        preferred = _preferred_clef_for_instrument(name)
+        if preferred is not None:
+            for existing in list(part_obj.recurse().getElementsByClass(clef.Clef)):
+                try:
+                    existing.activeSite.remove(existing)
+                except Exception:
+                    pass
+            part_obj.insert(0, preferred)
 
     for stem_name, midi_path in midis.items():
         instrument_name = assignment.get(stem_name, "").strip()
@@ -209,9 +405,31 @@ def build_score(
 
         if simplify_enabled:
             _simplify_part(part_stream, options)
+            if _is_beginner_profile(options) and not any(
+                token in instrument_name for token in ("Snare", "Bass Drum", "Percussion")
+            ):
+                metrics = _apply_beginner_melody_filter(part_stream)
+                if (
+                    metrics["note_count"] > 0
+                    and (
+                        metrics["accidental_density"] > 0.35
+                        or metrics["large_leap_rate"] > 0.45
+                        or metrics["short_note_rate"] > 0.55
+                    )
+                ):
+                    skipped_parts.append(
+                        {
+                            "name": part_label,
+                            "status": "skipped",
+                            "reason": "unplayable_beginner",
+                            "note_count": 0,
+                        }
+                    )
+                    continue
 
         # Concert-pitch copy for the full score
         concert_part = copy.deepcopy(part_stream)
+        _apply_instrument_and_clef(concert_part, instrument_name)
         concert_part.insert(0, expressions.TextExpression(disclaimer))
         score.insert(0, concert_part)
 
@@ -220,7 +438,14 @@ def build_score(
         transposed_part = copy.deepcopy(part_stream)
         if semitones:
             transposed_part.transpose(interval.Interval(semitones), inPlace=True)
+        _apply_instrument_and_clef(transposed_part, instrument_name)
+        transposed_part.metadata = metadata.Metadata()
+        transposed_part.metadata.title = options.get("title", "Untitled")
+        transposed_part.metadata.composer = options.get("composer", "")
         transposed_part.insert(0, expressions.TextExpression(disclaimer))
+        with warnings.catch_warnings():
+            _suppress_known_music21_warnings()
+            transposed_part = transposed_part.makeNotation(inPlace=False)
 
         part_xml = part_dir / f"{sanitize_filename(part_label)}.musicxml"
         transposed_part.write("musicxml", fp=str(part_xml))
@@ -229,12 +454,15 @@ def build_score(
     if not score.parts:
         raise RuntimeError("No assigned parts produced notes. Check assignments and inputs.")
 
+    with warnings.catch_warnings():
+        _suppress_known_music21_warnings()
+        score = score.makeNotation(inPlace=False)
     full_score_path = workdir / f"{sanitize_filename(options.get('title', 'score'))}.musicxml"
     score.write("musicxml", fp=str(full_score_path))
-    return {"full_score": str(full_score_path), "parts": transposed_parts}
+    return {"full_score": str(full_score_path), "parts": transposed_parts, "skipped_parts": skipped_parts}
 
 
-def render_pdfs(score_data: dict[str, str | dict[str, str]]) -> dict:
+def render_pdfs(score_data: dict[str, str | dict[str, str]], run_id: str | None = None) -> dict:
     """Render full-score PDF (concert pitch) and transposed part PDFs via MuseScore CLI.
 
     Args:
@@ -252,10 +480,23 @@ def render_pdfs(score_data: dict[str, str | dict[str, str]]) -> dict:
     if not full_score_xml.exists():
         raise FileNotFoundError(f"Full score MusicXML not found: {full_score_xml}")
 
-    score_pdf = OUTPUT_DIR / f"{full_score_xml.stem}_full_score.pdf"
+    output_root = OUTPUT_DIR / sanitize_filename(run_id) if run_id else OUTPUT_DIR
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    score_pdf = output_root / f"{full_score_xml.stem}_full_score.pdf"
     _run([MUSESCORE_CMD, "-o", str(score_pdf), str(full_score_xml)])
     rendered: list[str] = [str(score_pdf)]
     part_report: list[dict] = []
+    for item in score_data.get("skipped_parts", []) if isinstance(score_data, dict) else []:
+        if isinstance(item, dict):
+            part_report.append(
+                {
+                    "name": str(item.get("name", "")),
+                    "status": "skipped",
+                    "reason": str(item.get("reason", "unknown")),
+                    "note_count": int(item.get("note_count", 0)),
+                }
+            )
 
     for part_name, part_xml_path in score_data["parts"].items():
         part_xml = Path(part_xml_path)
@@ -266,7 +507,9 @@ def render_pdfs(score_data: dict[str, str | dict[str, str]]) -> dict:
             })
             continue
 
-        parsed_part = converter.parse(str(part_xml))
+        with warnings.catch_warnings():
+            _suppress_known_music21_warnings()
+            parsed_part = converter.parse(str(part_xml))
         note_count = len(list(parsed_part.recurse().notes))
 
         if note_count == 0:
@@ -276,7 +519,7 @@ def render_pdfs(score_data: dict[str, str | dict[str, str]]) -> dict:
             })
             continue
 
-        part_pdf = OUTPUT_DIR / f"{sanitize_filename(part_name)}.pdf"
+        part_pdf = output_root / f"{sanitize_filename(part_name)}.pdf"
         _run([MUSESCORE_CMD, "-o", str(part_pdf), str(part_xml)])
         rendered.append(str(part_pdf))
         part_report.append({

@@ -57,24 +57,25 @@ INSTRUMENT_SPECS: dict[str, int] = {
 STANDARD_INSTRUMENTS = list(INSTRUMENT_SPECS.keys())
 
 SIMPLIFY_PROFILES: dict[str, dict] = {
-    "Conservative": {
-        "quantize_grid": "1/16",
-        "min_note_duration_beats": 0.125,
-        "density_threshold": 10,
-    },
-    "Balanced": {
-        "quantize_grid": "1/8",
-        "min_note_duration_beats": 0.25,
-        "density_threshold": 6,
-    },
-    "Aggressive": {
+    "Beginner": {
         "quantize_grid": "1/4",
         "min_note_duration_beats": 0.5,
         "density_threshold": 3,
     },
+    "Easy Intermediate": {
+        "quantize_grid": "1/8",
+        "min_note_duration_beats": 0.25,
+        "density_threshold": 6,
+    },
+    "Intermediate": {
+        "quantize_grid": "1/16",
+        "min_note_duration_beats": 0.125,
+        "density_threshold": 10,
+    },
 }
 
-DEFAULT_PROFILE = "Balanced"
+DEFAULT_PROFILE = "Easy Intermediate"
+TEACHER_VISIBLE_PROFILES = ("Beginner", "Easy Intermediate")
 
 SIMPLIFY_PRESET = SIMPLIFY_PROFILES[DEFAULT_PROFILE] | {"enabled": True}
 
