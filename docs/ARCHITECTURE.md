@@ -7,6 +7,7 @@ This document is the short system map for the MVP. It describes component bounda
 ### Core Services
 - **Streamlit App** (`app.py`) - Local browser UI for input, options, assignment, progress, and download.
 - **Pipeline Engine** (`pipeline.py`) - Orchestrates audio normalization, stem separation, transcription, score build, and export.
+- **Musicality Layer** (`pipeline.py`, rule-based) - Post-transcription shaping for classroom-readable rhythm/key/phrasing behavior.
 - **Config Layer** (`config.py`) - Central constants for paths, instrument catalog, and tool settings.
 - **Utility Layer** (`utils.py`) - Shared helpers for cleanup, disclaimers, and output packaging.
 
@@ -33,6 +34,7 @@ Teacher (Browser @ localhost:8501)
       -> Audio Normalize (ffmpeg/pydub or yt-dlp + ffmpeg)
       -> Stem Separation (demucs)
       -> MIDI Transcription (basic-pitch)
+      -> Musicality Pass (rhythm/key/phrasing heuristics)
       -> Score Build + Transposition (music21)
       -> PDF Rendering (MuseScore CLI)
   -> ZIP Output (score + assigned/non-empty part PDFs)
@@ -69,6 +71,7 @@ Teacher submits single-video URL
   - Simplification preset (enabled/disabled)
   - Advanced simplification overrides (hidden toggle)
   - Metadata fields (title/composer/school)
+  - Song-fit analysis (feasibility-first recommendation for profile selection)
 - **Output Contract**:
   - 1 conductor score PDF (concert pitch)
   - N part PDFs where parts are both assigned and non-empty
@@ -104,6 +107,7 @@ Each integration must surface actionable errors to the UI stage where it fails.
 - Target runtime: local Windows machine (teacher), offline after dependency install.
 - Dev environment: WSL/Linux is acceptable, but deployment behavior is validated on Windows.
 - Priority order: transcription correctness and transposition accuracy over speed.
+- Current roadmap priority: preserve structural correctness while improving musicality/readability for classroom performance.
 - Cleanup policy: clear temporary artifacts after run/session completion.
 
 ## Development Guidelines

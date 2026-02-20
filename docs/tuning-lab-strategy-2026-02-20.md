@@ -1,7 +1,7 @@
 # Tuning Lab Strategy (2026-02-20)
 
 ## Purpose
-Create a separate local app for calibration experiments so we can improve simplification quality (especially Beginner and Easy Intermediate) without adding complexity to the teacher-facing production app.
+Create a separate local app for calibration experiments so we can improve simplification and musicality quality (especially Beginner and Easy Intermediate) without adding complexity to the teacher-facing production app.
 
 ## Scope Boundary
 - Production app stays focused on reliable score generation for classroom use.
@@ -16,12 +16,22 @@ Create a separate local app for calibration experiments so we can improve simpli
 5. Aggregate scores and rank parameter sets.
 6. Update defaults/candidate ranges and run next round.
 
+## Musicality Calibration Focus (Current)
+- Move beyond structural correctness into playable musical feel.
+- Evaluate and tune:
+  - rhythmic smoothing behavior
+  - key-signature policy (`auto` vs simplified/manual)
+  - swing/groove readability strategy
+  - phrasing/breath friendliness for wind parts
+- Keep objective integrity checks (measure math, monophony, range) as non-regression gates.
+
 ## Success Criteria
 - We can identify a clearly better parameter profile for:
   - `Beginner`
   - `Easy Intermediate`
 - Improvement is based on repeated human ratings, not one-off impressions.
 - Every decision is traceable to a manifested round and score summary.
+- Student reviewers describe outputs as musically playable, not only visually valid.
 
 ## Data Contract
 - Round folder: `datasets/tuning_rounds/<round_id>/`

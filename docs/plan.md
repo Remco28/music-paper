@@ -7,6 +7,34 @@
 **Priority**: Maximum transcription quality (stem separation + clean MIDI + perfect transposition)  
 **No paid APIs**, no cloud, no batch/library features  
 
+## 2026-02-20 Status + Focus Update (Current Source of Truth)
+- Core local pipeline is stable for targeted woodwind workflow:
+  - stem separation -> transcription -> score build -> PDF export
+  - run-scoped artifacts, manifests, and ZIP packaging
+  - clarinet/sax-focused calibration loop now operational
+- Authentication remains out of scope (local trusted usage).
+- Teacher-facing profiles remain:
+  - `Beginner`
+  - `Easy Intermediate`
+- Tuning workflow is split:
+  - **Primary**: Tuning Lab human ratings
+  - **Secondary**: Gemini screenshot screening
+- Round 6 calibration passed for current target set (clarinet + alto sax + full score readability).
+
+### Main Focus Going Forward: Musicality Layer
+The next phase is not core data integrity; it is musical interpretation quality for classroom use.
+Primary technical goals:
+1. Rhythm smoothing to avoid over-literal micro-subdivisions while preserving phrase intent.
+2. Key policy controls (`auto` vs simplified/manual override) to reduce readability burden.
+3. Optional swing-style annotation mode for groove-based songs.
+4. Basic phrasing support (breath-friendly segmentation/articulation heuristics).
+5. Keep score math/monophony guarantees intact while improving musical feel.
+
+### Acceptance Direction for Next Phase
+- Output should remain structurally valid and transposition-correct.
+- Beginner/Easy Intermediate notation must be musically plausible to student performers, not only mathematically valid.
+- Human ratings (kids/teacher) remain the final quality gate.
+
 ## 2026-02-20 Addendum: Calibration Track
 - We are adding a separate local-only **Tuning Lab** workflow for simplification calibration.
 - Strategy source of truth: `docs/tuning-lab-strategy-2026-02-20.md`.
