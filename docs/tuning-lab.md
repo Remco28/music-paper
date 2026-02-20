@@ -2,6 +2,7 @@
 
 ## Purpose
 Run calibration rounds in a separate app so students can rate generated PDFs and we can tune parameters with evidence.
+Tuning Lab is the primary human-evaluation workflow.
 
 ## 1) Create a Round
 Use existing successful runs to generate a round manifest:
@@ -53,6 +54,13 @@ Notes:
 
 Output:
 - `datasets/tuning_rounds/<round_id>/summary.json`
+
+## Recommended Workflow
+1. Use the production app to generate candidate runs.
+2. Build a round with `scripts/generate_tuning_batch.py`.
+3. Collect student ratings in Tuning Lab (`apps/tuning_lab.py`).
+4. Aggregate with `scripts/score_tuning_round.py`.
+5. Use Gemini screenshot review only as a fast interim screener between student sessions.
 
 ## Round Folder Contract
 - `round_manifest.json` - sample list + parameter payload

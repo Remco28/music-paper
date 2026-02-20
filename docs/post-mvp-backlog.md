@@ -11,6 +11,8 @@ Prioritized follow-up items after MVP final release.
 1. Add optional quick preview thumbnails for generated PDFs in-app.
 2. Add richer part diagnostics (per-part note density/tessitura hints).
 3. Add user-selectable default profile presets per session startup.
+4. Add an output playback player (MIDI-first, with part mute/solo + tempo control) alongside MusicXML exports.
+5. Add a readability-focused key-signature mode selector (`auto` vs `simplified/manual`) for cleaner beginner notation.
 
 ## P3 - Operational Ergonomics
 1. Add one-click environment snapshot export (diagnostics + selected run detail).

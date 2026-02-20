@@ -369,3 +369,20 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-20 10:58] [Architect]: SCOPE UPDATE (Tuning Lab): Re-focused evaluation to clarinet/sax reviewer strengths; no prior round data preservation required.
 [2026-02-20 10:58] [Developer]: IMPL DONE (Tuning Lab Batch Filters): Added `--include-part-keyword` and `--allowed-profile` filters to `scripts/generate_tuning_batch.py`.
 [2026-02-20 10:58] [Developer]: ROUND READY: Created `datasets/tuning_rounds/woodwinds_round1/round_manifest.json` with clarinet/sax-only samples and Beginner/Easy Intermediate profiles.
+[2026-02-20 11:54] [Developer]: IMPL DONE (Revision): Added woodwind sanitization pass in pipeline with contour-aware monophony, instrument-range clamps, and overlap-bucket cleanup (no chordify).
+[2026-02-20 11:54] [Developer]: VALIDATION EVIDENCE: New tuned run `woodwinds_tune3_easy-intermediate_20260220_115415` exports Alto Sax + Bb Clarinet parts (previous tune1/tune2 had woodwind no-note skips).
+[2026-02-20 11:54] [Developer]: TOOLING UPDATE: Added Gemini pack reset behavior and prepared clean `datasets/Gemini/woodwinds_gemini_round2` for screenshot review.
+[2026-02-20 12:12] [Developer]: IMPL DONE (Revision): Added explicit woodwind primary-voice flattening and measure-duration rebalance pass before notation/export.
+[2026-02-20 12:12] [Developer]: VALIDATION EVIDENCE: `woodwinds_tune4_easy-intermediate_20260220_121213` now exports 4 parts with zero voice objects on Alto Sax/Bb Clarinet part MusicXML.
+[2026-02-20 12:12] [Developer]: ROUND READY: Prepared `datasets/Gemini/woodwinds_gemini_round3` from tune4 runs for screenshot review.
+[2026-02-20 23:00] [Developer]: IMPL DONE (Round 4 revision): Added global score-measure alignment pass, extended monophony sanitization to low-brass/percussion, and tightened per-part grid normalization for woodwinds/percussion.
+[2026-02-20 23:00] [Architect]: REVIEW NOTE: Objective XML checks improved for Alto/Clarinet/Snare (polyphony removed; bad-measure counts materially reduced). Tuba remains partially unstable and is flagged for next calibration pass.
+[2026-02-20 23:00] [Developer]: ROUND READY: Prepared `datasets/Gemini/woodwinds_gemini_round4` from run `woodwinds_tune4_round4_rebuild2_20260220_230000` for screenshot review.
+[2026-02-20 23:15] [Developer]: IMPL DONE (Round 5 pass): Added post-transposition written-range clamp for clarinet/sax, stricter monophonic timeline rebuild, shared highestTime padding before full-score measure alignment, and moved disclaimer injection to score-level only.
+[2026-02-20 23:16] [Architect]: REVIEW NOTE: Objective XML checks show major stability gain vs Round 4: full-score bad-measure counts dropped to zero across all parts; Alto written ceiling reduced from 90 to 79; watermark text-per-part removed.
+[2026-02-20 23:16] [Developer]: ROUND READY: Prepared `datasets/Gemini/woodwinds_gemini_round5` from run `woodwinds_tune5_rebuild_20260220_231500` for screenshot review.
+[2026-02-20 23:30] [Developer]: IMPL DONE (Round 6 polish): Added final engraving polish pass (second score-level makeNotation), hard-fixed snare pitch-line mapping to C5, and guarded woodwind key-signature insertion when accidental density is high.
+[2026-02-20 23:31] [Architect]: REVIEW NOTE: Round 6 preserves Round 5 structural stability (zero bad-measure counts across full score parts) while adding snare visual flattening and woodwind key signatures.
+[2026-02-20 23:31] [Developer]: ROUND READY: Prepared `datasets/Gemini/woodwinds_gemini_round6` from run `woodwinds_tune6_rebuild_20260220_233000` for screenshot review.
+[2026-02-20 23:40] [Architect]: REVIEW PASS (Round 6): Gemini notes report PASS on Alto Sax, Bb Clarinet, and Full Score; notation output accepted for current calibration target.
+[2026-02-20 23:41] [Architect]: BACKLOG UPDATE: Added deferred feature item for output playback player (MIDI-first with mute/solo + tempo controls) to docs/post-mvp-backlog.md.

@@ -316,6 +316,558 @@ def _apply_beginner_melody_filter(part_stream) -> dict[str, float]:
     return _playability_metrics(part_stream)
 
 
+def _woodwind_range_midi(instrument_name: str) -> tuple[int, int]:
+    """Return conservative concert-pitch MIDI bounds for student woodwind notation."""
+    name = str(instrument_name or "")
+    if "Clarinet" in name:
+        # Bb clarinet (concert): roughly D3-Bb5 for middle-school readability.
+        return (50, 82)
+    if "Alto Sax" in name:
+        # Alto sax (concert): roughly Db3-A5 in student-friendly range.
+        return (49, 81)
+    if "Tenor Sax" in name:
+        return (44, 74)
+    if "Baritone Sax" in name:
+        return (36, 67)
+    if "Sax" in name:
+        return (49, 81)
+    if "Flute" in name:
+        return (60, 88)
+    if "Oboe" in name:
+        return (58, 86)
+    return (48, 84)
+
+
+def _is_woodwind_target(instrument_name: str) -> bool:
+    name = str(instrument_name or "")
+    return any(token in name for token in ("Clarinet", "Sax", "Flute", "Oboe", "Bassoon"))
+
+
+def _is_percussion_target(instrument_name: str) -> bool:
+    name = str(instrument_name or "")
+    return any(token in name for token in ("Snare", "Bass Drum", "Percussion", "Auxiliary", "Timpani"))
+
+
+def _is_low_brass_target(instrument_name: str) -> bool:
+    name = str(instrument_name or "")
+    return any(token in name for token in ("Tuba", "Trombone", "Euphonium", "Bassoon", "Bass Clarinet"))
+
+
+def _instrument_range_midi(instrument_name: str) -> tuple[int, int]:
+    if _is_woodwind_target(instrument_name):
+        return _woodwind_range_midi(instrument_name)
+    name = str(instrument_name or "")
+    if "Tuba" in name:
+        return (28, 58)
+    if "Trombone" in name:
+        return (40, 70)
+    if "Euphonium" in name:
+        return (40, 72)
+    if "Bassoon" in name:
+        return (34, 69)
+    return (36, 84)
+
+
+def _written_range_midi(instrument_name: str) -> tuple[int, int] | None:
+    """Return student-friendly written ranges for transposed part exports."""
+    name = str(instrument_name or "")
+    if "Bb Clarinet" in name or "Clarinet" in name:
+        return (52, 84)  # E3 to C6 (written)
+    if "Alto Sax" in name:
+        return (57, 79)  # A3 to G5 (written, classroom-safe)
+    if "Tenor Sax" in name:
+        return (50, 76)
+    if "Baritone Sax" in name:
+        return (45, 72)
+    return None
+
+
+def _clamp_written_part_range(part_stream, instrument_name: str) -> None:
+    """Fold written notes by octave into a student-friendly written range."""
+    limits = _written_range_midi(instrument_name)
+    if limits is None:
+        return
+    min_midi, max_midi = limits
+    for element in list(part_stream.recurse().notes):
+        if not getattr(element, "isNote", False):
+            continue
+        pitch_obj = getattr(element, "pitch", None)
+        if pitch_obj is None:
+            continue
+        midi_value = int(pitch_obj.midi)
+        while midi_value > max_midi:
+            midi_value -= 12
+        while midi_value < min_midi:
+            midi_value += 12
+        pitch_obj.midi = int(max(min_midi, min(max_midi, midi_value)))
+
+
+def _sanitize_woodwind_melody(part_stream, instrument_name: str, options: dict) -> None:
+    """Apply contour-aware monophony and range-safe cleanup for woodwind parts."""
+    from music21 import chord, note, pitch
+
+    grid = str(options.get("quantize_grid", "1/8"))
+    grid_step = {"1/4": 1.0, "1/8": 0.5, "1/16": 0.25}.get(grid, 0.5)
+    min_duration = max(float(options.get("min_note_duration_beats", 0.25)), grid_step)
+    min_midi, max_midi = _woodwind_range_midi(instrument_name)
+    center_midi = (min_midi + max_midi) / 2.0
+
+    # Group notes/chords into a sliding time window to collapse near-overlaps.
+    grouped: dict[float, list] = {}
+    for element in list(part_stream.recurse().notes):
+        try:
+            offset = float(element.getOffsetInHierarchy(part_stream))
+        except Exception:
+            continue
+        bucket = round(offset / grid_step) * grid_step
+        grouped.setdefault(bucket, []).append(element)
+
+    if not grouped:
+        return
+
+    previous_midi: int | None = None
+    for offset in sorted(grouped.keys()):
+        elements = grouped[offset]
+        if not elements:
+            continue
+        anchor = elements[0]
+        raw_candidates: list[int] = []
+        durations: list[float] = []
+        for element in elements:
+            durations.append(float(element.duration.quarterLength))
+            if isinstance(element, chord.Chord):
+                raw_candidates.extend(int(p.midi) for p in element.pitches)
+            elif isinstance(element, note.Note) and getattr(element, "pitch", None) is not None:
+                raw_candidates.append(int(element.pitch.midi))
+
+        raw_candidates = sorted(set(raw_candidates))
+        in_range = [m for m in raw_candidates if min_midi <= m <= max_midi]
+        candidates = in_range if in_range else raw_candidates
+
+        duration = max(durations) if durations else min_duration
+        duration = max(min_duration, round(duration / grid_step) * grid_step)
+
+        if candidates:
+            if previous_midi is None:
+                chosen = min(candidates, key=lambda m: abs(m - center_midi))
+            else:
+                chosen = min(candidates, key=lambda m: abs(m - previous_midi))
+            chosen = max(min_midi, min(max_midi, int(chosen)))
+            if previous_midi is not None:
+                while chosen - previous_midi > 7:
+                    chosen -= 12
+                while previous_midi - chosen > 7:
+                    chosen += 12
+                chosen = max(min_midi, min(max_midi, int(chosen)))
+
+            if isinstance(anchor, chord.Chord):
+                replacement = note.Note()
+                replacement.quarterLength = duration
+                new_pitch = pitch.Pitch()
+                new_pitch.midi = int(chosen)
+                replacement.pitch = new_pitch
+                if anchor.activeSite is not None:
+                    anchor.activeSite.replace(anchor, replacement)
+                    anchor = replacement
+            elif isinstance(anchor, note.Note):
+                new_pitch = pitch.Pitch()
+                new_pitch.midi = int(chosen)
+                anchor.pitch = new_pitch
+                anchor.quarterLength = duration
+            previous_midi = int(chosen)
+        else:
+            replacement_rest = note.Rest(quarterLength=duration)
+            if anchor.activeSite is not None:
+                anchor.activeSite.replace(anchor, replacement_rest)
+
+        for extra in elements[1:]:
+            try:
+                if extra.activeSite is not None:
+                    extra.activeSite.remove(extra)
+            except Exception:
+                pass
+
+
+def _sanitize_single_line_part(part_stream, instrument_name: str, options: dict) -> None:
+    """Collapse dense polyphony into a playable single line for monophonic parts."""
+    from music21 import chord, note, pitch
+
+    grid = str(options.get("quantize_grid", "1/8"))
+    grid_step = {"1/4": 1.0, "1/8": 0.5, "1/16": 0.25}.get(grid, 0.5)
+    min_duration = max(float(options.get("min_note_duration_beats", 0.25)), grid_step)
+    min_midi, max_midi = _instrument_range_midi(instrument_name)
+    center_midi = (min_midi + max_midi) / 2.0
+    low_register = _is_low_brass_target(instrument_name)
+
+    grouped: dict[float, list] = {}
+    for element in list(part_stream.recurse().notes):
+        try:
+            offset = float(element.getOffsetInHierarchy(part_stream))
+        except Exception:
+            continue
+        bucket = round(offset / grid_step) * grid_step
+        grouped.setdefault(bucket, []).append(element)
+
+    previous_midi: int | None = None
+    for offset in sorted(grouped.keys()):
+        elements = grouped[offset]
+        if not elements:
+            continue
+        anchor = elements[0]
+        durations: list[float] = []
+        candidates: list[int] = []
+        for element in elements:
+            durations.append(float(element.duration.quarterLength))
+            if isinstance(element, chord.Chord):
+                candidates.extend(int(p.midi) for p in element.pitches)
+            elif isinstance(element, note.Note) and getattr(element, "pitch", None) is not None:
+                candidates.append(int(element.pitch.midi))
+
+        in_range = [m for m in sorted(set(candidates)) if min_midi <= m <= max_midi]
+        if not in_range:
+            in_range = sorted(set(candidates))
+        duration = max(durations) if durations else min_duration
+        duration = max(min_duration, round(duration / grid_step) * grid_step)
+
+        if in_range:
+            if previous_midi is None:
+                chosen = min(in_range, key=lambda m: abs(m - center_midi))
+            else:
+                chosen = min(in_range, key=lambda m: abs(m - previous_midi))
+            if low_register:
+                anchor_midi = previous_midi if previous_midi is not None else int(center_midi)
+                chosen = min(in_range, key=lambda m: (abs(m - anchor_midi), m))
+            chosen = max(min_midi, min(max_midi, int(chosen)))
+            if previous_midi is not None:
+                while chosen - previous_midi > 9:
+                    chosen -= 12
+                while previous_midi - chosen > 9:
+                    chosen += 12
+                chosen = max(min_midi, min(max_midi, int(chosen)))
+            if isinstance(anchor, chord.Chord):
+                replacement = note.Note()
+                replacement.quarterLength = duration
+                p = pitch.Pitch()
+                p.midi = int(chosen)
+                replacement.pitch = p
+                if anchor.activeSite is not None:
+                    anchor.activeSite.replace(anchor, replacement)
+            elif isinstance(anchor, note.Note):
+                p = pitch.Pitch()
+                p.midi = int(chosen)
+                anchor.pitch = p
+                anchor.quarterLength = duration
+            previous_midi = int(chosen)
+        else:
+            replacement_rest = note.Rest(quarterLength=duration)
+            if anchor.activeSite is not None:
+                anchor.activeSite.replace(anchor, replacement_rest)
+
+        for extra in elements[1:]:
+            try:
+                if extra.activeSite is not None:
+                    extra.activeSite.remove(extra)
+            except Exception:
+                pass
+
+
+def _sanitize_percussion_part(part_stream, options: dict) -> None:
+    """Map noisy pitched percussion transcription into a single unpitched timeline."""
+    from music21 import chord, note, pitch
+
+    grid = str(options.get("quantize_grid", "1/8"))
+    grid_step = {"1/4": 1.0, "1/8": 0.5, "1/16": 0.25}.get(grid, 0.5)
+    min_duration = max(float(options.get("min_note_duration_beats", 0.25)), grid_step)
+    grouped: dict[float, list] = {}
+
+    for element in list(part_stream.recurse().notes):
+        try:
+            offset = float(element.getOffsetInHierarchy(part_stream))
+        except Exception:
+            continue
+        bucket = round(offset / grid_step) * grid_step
+        grouped.setdefault(bucket, []).append(element)
+
+    for offset in sorted(grouped.keys()):
+        elements = grouped[offset]
+        if not elements:
+            continue
+        anchor = elements[0]
+        durations = [float(element.duration.quarterLength) for element in elements]
+        duration = max(durations) if durations else min_duration
+        duration = max(min_duration, round(duration / grid_step) * grid_step)
+
+        if isinstance(anchor, chord.Chord):
+            replacement = note.Note()
+            replacement.pitch = pitch.Pitch("C5")
+            replacement.quarterLength = duration
+            if anchor.activeSite is not None:
+                anchor.activeSite.replace(anchor, replacement)
+        elif isinstance(anchor, note.Note):
+            anchor.pitch = pitch.Pitch("C5")
+            anchor.quarterLength = duration
+
+        for extra in elements[1:]:
+            try:
+                if extra.activeSite is not None:
+                    extra.activeSite.remove(extra)
+            except Exception:
+                pass
+
+
+def _tighten_monophonic_timeline(part_stream, grid: str) -> None:
+    """Rebuild note timeline on a strict grid to eliminate overlap drift."""
+    import copy
+
+    from music21 import chord, note, pitch, stream
+
+    grid_step = {"1/4": 1.0, "1/8": 0.5, "1/16": 0.25}.get(str(grid), 0.5)
+    events: list[tuple[float, float, int | None]] = []
+
+    for element in list(part_stream.recurse().notes):
+        try:
+            raw_offset = float(element.getOffsetInHierarchy(part_stream))
+        except Exception:
+            continue
+        offset = round(raw_offset / grid_step) * grid_step
+        duration = max(grid_step, round(float(element.duration.quarterLength) / grid_step) * grid_step)
+        midi_value: int | None = None
+        if isinstance(element, note.Note) and getattr(element, "pitch", None) is not None:
+            midi_value = int(element.pitch.midi)
+        elif isinstance(element, chord.Chord):
+            pitches = [int(p.midi) for p in element.pitches]
+            if pitches:
+                midi_value = max(pitches)
+        events.append((offset, duration, midi_value))
+
+    if not events:
+        return
+
+    events.sort(key=lambda item: item[0])
+    normalized: list[tuple[float, float, int | None]] = []
+    for idx, (offset, duration, midi_value) in enumerate(events):
+        next_offset = events[idx + 1][0] if idx + 1 < len(events) else None
+        if next_offset is not None:
+            duration = min(duration, max(grid_step, next_offset - offset))
+        if normalized and abs(normalized[-1][0] - offset) < 1e-6:
+            # Keep only one event per grid bucket; prefer pitched note when available.
+            prev_offset, prev_duration, prev_midi = normalized[-1]
+            winner_midi = midi_value if midi_value is not None else prev_midi
+            winner_duration = max(prev_duration, duration)
+            normalized[-1] = (prev_offset, winner_duration, winner_midi)
+            continue
+        normalized.append((offset, duration, midi_value))
+
+    replacement = stream.Part()
+    for offset, duration, midi_value in normalized:
+        if midi_value is None:
+            replacement.insert(offset, note.Rest(quarterLength=duration))
+            continue
+        p = pitch.Pitch()
+        p.midi = midi_value
+        n = note.Note()
+        n.pitch = p
+        n.quarterLength = duration
+        replacement.insert(offset, n)
+
+    for element in list(part_stream.notesAndRests):
+        try:
+            part_stream.remove(element)
+        except Exception:
+            pass
+    for element in list(part_stream.recurse().getElementsByClass(stream.Measure)):
+        try:
+            part_stream.remove(element)
+        except Exception:
+            pass
+    for element in list(replacement.notesAndRests):
+        try:
+            offset = float(element.getOffsetInHierarchy(replacement))
+        except Exception:
+            offset = 0.0
+        part_stream.insert(offset, copy.deepcopy(element))
+
+
+def _force_fixed_percussion_pitch(part_stream, pitch_name: str = "C5") -> None:
+    """Ensure unpitched percussion displays as a single staff position."""
+    from music21 import note, pitch
+
+    for element in list(part_stream.recurse().notes):
+        if isinstance(element, note.Note):
+            element.pitch = pitch.Pitch(pitch_name)
+
+
+def _insert_guarded_key_signature(part_stream) -> None:
+    """Insert detected key only when it likely reduces inline accidental clutter."""
+    from music21 import key
+
+    metrics = _playability_metrics(part_stream)
+    if float(metrics.get("accidental_density", 0.0)) < 0.18:
+        return
+    try:
+        detected = part_stream.analyze("key")
+    except Exception:
+        return
+    if not isinstance(detected, key.Key):
+        return
+    if abs(int(detected.sharps)) > 4:
+        return
+    for existing in list(part_stream.recurse().getElementsByClass(key.KeySignature)):
+        try:
+            existing.activeSite.remove(existing)
+        except Exception:
+            pass
+    part_stream.insert(0, key.KeySignature(int(detected.sharps)))
+
+
+def _flatten_part_to_primary_voice(part_stream) -> None:
+    """Collapse measures to a single primary voice to avoid overlapping timelines."""
+    import copy
+
+    from music21 import stream
+
+    for measure in list(part_stream.recurse().getElementsByClass(stream.Measure)):
+        voices = list(measure.getElementsByClass(stream.Voice))
+        if len(voices) <= 1:
+            continue
+        primary = voices[0]
+        primary_events: list[tuple[float, object]] = []
+        for element in list(primary.notesAndRests):
+            try:
+                offset = float(element.getOffsetInHierarchy(measure))
+            except Exception:
+                continue
+            primary_events.append((offset, copy.deepcopy(element)))
+
+        for element in list(measure.notesAndRests):
+            try:
+                measure.remove(element)
+            except Exception:
+                pass
+        for voice in voices:
+            try:
+                measure.remove(voice)
+            except Exception:
+                pass
+        for offset, element in primary_events:
+            measure.insert(offset, element)
+
+
+def _rebalance_measure_durations(part_stream) -> None:
+    """Ensure each measure duration matches the active time signature bar duration."""
+    from music21 import meter, note, stream
+
+    for measure in list(part_stream.recurse().getElementsByClass(stream.Measure)):
+        signatures = measure.getTimeSignatures(returnDefault=True)
+        ts = signatures[0] if signatures else meter.TimeSignature("4/4")
+        target = float(ts.barDuration.quarterLength)
+        current = float(measure.duration.quarterLength)
+
+        if current < target - 1e-6:
+            measure.insert(current, note.Rest(quarterLength=(target - current)))
+            continue
+
+        overflow = current - target
+        if overflow <= 1e-6:
+            continue
+        tail = sorted(
+            list(measure.notesAndRests),
+            key=lambda item: float(item.getOffsetInHierarchy(measure)),
+            reverse=True,
+        )
+        for element in tail:
+            if overflow <= 1e-6:
+                break
+            duration = float(element.duration.quarterLength)
+            if duration <= overflow + 1e-6:
+                try:
+                    measure.remove(element)
+                except Exception:
+                    pass
+                overflow -= duration
+            else:
+                element.duration.quarterLength = max(0.125, duration - overflow)
+                overflow = 0.0
+
+
+def _normalize_part_grid(part_stream, grid: str) -> None:
+    """Force a strict per-part rhythmic grid and bar duration conformance."""
+    from music21 import meter, stream
+
+    divisor = _grid_to_divisor(grid)
+    with warnings.catch_warnings():
+        _suppress_known_music21_warnings()
+        part_stream.makeMeasures(inPlace=True)
+    part_stream.quantize(
+        quarterLengthDivisors=(divisor,),
+        processOffsets=True,
+        processDurations=True,
+        inPlace=True,
+        recurse=True,
+    )
+    _flatten_part_to_primary_voice(part_stream)
+    _rebalance_measure_durations(part_stream)
+    measures = list(part_stream.recurse().getElementsByClass(stream.Measure))
+    if measures:
+        ts = measures[0].getTimeSignatures(returnDefault=True)
+        if not ts:
+            measures[0].insert(0, meter.TimeSignature("4/4"))
+
+
+def _align_score_measures(score_obj) -> None:
+    """Apply shared measure timeline across all parts for full-score barline alignment."""
+    from music21 import meter, note, stream
+
+    with warnings.catch_warnings():
+        _suppress_known_music21_warnings()
+        score_obj.makeMeasures(inPlace=True)
+
+    max_count = 0
+    for part in score_obj.parts:
+        measures = list(part.recurse().getElementsByClass(stream.Measure))
+        max_count = max(max_count, len(measures))
+
+    if max_count == 0:
+        return
+
+    for part in score_obj.parts:
+        measures = list(part.recurse().getElementsByClass(stream.Measure))
+        if measures:
+            sigs = measures[0].getTimeSignatures(returnDefault=True)
+            ts = sigs[0] if sigs else meter.TimeSignature("4/4")
+            bar_q = float(ts.barDuration.quarterLength)
+        else:
+            ts = meter.TimeSignature("4/4")
+            bar_q = 4.0
+
+        for idx in range(len(measures), max_count):
+            extra = stream.Measure(number=(idx + 1))
+            if idx == 0:
+                extra.insert(0, ts)
+            extra.insert(0, note.Rest(quarterLength=bar_q))
+            part.append(extra)
+
+        _flatten_part_to_primary_voice(part)
+        _rebalance_measure_durations(part)
+
+
+def _pad_parts_to_common_length(score_obj, grid: str) -> None:
+    """Pad shorter parts to shared highestTime before global measure pass."""
+    from music21 import note
+
+    parts = list(score_obj.parts)
+    if not parts:
+        return
+    grid_step = {"1/4": 1.0, "1/8": 0.5, "1/16": 0.25}.get(str(grid), 0.5)
+    max_time = max(float(part.highestTime or 0.0) for part in parts)
+    max_time = round(max_time / grid_step) * grid_step
+    for part in parts:
+        current = round(float(part.highestTime or 0.0) / grid_step) * grid_step
+        deficit = max_time - current
+        if deficit > 1e-6:
+            part.append(note.Rest(quarterLength=deficit))
+
+
 def _beginner_playability_thresholds(instrument_name: str) -> dict[str, float]:
     """Return beginner gate thresholds tuned by instrument family."""
     name = str(instrument_name or "")
@@ -515,11 +1067,47 @@ def build_score(
 
         parsed = converter.parse(midi_path)
         part_stream = parsed.parts[0] if parsed.parts else parsed
+        original_part_stream = copy.deepcopy(part_stream)
         part_stream.partName = part_label
         part_stream.partAbbreviation = part_label
 
         if simplify_enabled:
             _simplify_part(part_stream, options)
+            if _is_percussion_target(instrument_name):
+                _sanitize_percussion_part(part_stream, options)
+            elif _is_woodwind_target(instrument_name):
+                _sanitize_woodwind_melody(part_stream, instrument_name, options)
+            elif _is_low_brass_target(instrument_name):
+                _sanitize_single_line_part(part_stream, instrument_name, options)
+            if _is_woodwind_target(instrument_name) or _is_percussion_target(instrument_name) or _is_low_brass_target(instrument_name):
+                _tighten_monophonic_timeline(part_stream, str(options.get("quantize_grid", "1/8")))
+
+            if len(list(part_stream.recurse().notes)) == 0:
+                # Fallback for over-pruned streams:
+                # re-run cleanup from original MIDI content with gentler defaults.
+                part_stream = copy.deepcopy(original_part_stream)
+                relaxed = dict(options)
+                relaxed["quantize_grid"] = "1/8"
+                relaxed["min_note_duration_beats"] = min(
+                    0.25, float(options.get("min_note_duration_beats", 0.25))
+                )
+                relaxed["density_threshold"] = max(
+                    8, int(options.get("density_threshold", 6))
+                )
+                if _is_percussion_target(instrument_name):
+                    _sanitize_percussion_part(part_stream, relaxed)
+                elif _is_woodwind_target(instrument_name):
+                    _sanitize_woodwind_melody(part_stream, instrument_name, relaxed)
+                elif _is_low_brass_target(instrument_name):
+                    _sanitize_single_line_part(part_stream, instrument_name, relaxed)
+                if _is_woodwind_target(instrument_name) or _is_percussion_target(instrument_name) or _is_low_brass_target(instrument_name):
+                    _tighten_monophonic_timeline(part_stream, str(relaxed.get("quantize_grid", "1/8")))
+
+            if _is_woodwind_target(instrument_name) or _is_percussion_target(instrument_name):
+                _normalize_part_grid(part_stream, str(options.get("quantize_grid", "1/8")))
+            else:
+                _flatten_part_to_primary_voice(part_stream)
+                _rebalance_measure_durations(part_stream)
             if _is_beginner_profile(options) and not any(
                 token in instrument_name for token in ("Snare", "Bass Drum", "Percussion")
             ):
@@ -545,8 +1133,11 @@ def build_score(
 
         # Concert-pitch copy for the full score
         concert_part = copy.deepcopy(part_stream)
+        if _is_percussion_target(instrument_name):
+            _force_fixed_percussion_pitch(concert_part, "C5")
+        elif _is_woodwind_target(instrument_name):
+            _insert_guarded_key_signature(concert_part)
         _apply_instrument_and_clef(concert_part, instrument_name)
-        concert_part.insert(0, expressions.TextExpression(disclaimer))
         score.insert(0, concert_part)
 
         # Transposed copy for the individual part export
@@ -554,14 +1145,28 @@ def build_score(
         transposed_part = copy.deepcopy(part_stream)
         if semitones:
             transposed_part.transpose(interval.Interval(semitones), inPlace=True)
+        _clamp_written_part_range(transposed_part, instrument_name)
+        if _is_percussion_target(instrument_name):
+            _force_fixed_percussion_pitch(transposed_part, "C5")
+        elif _is_woodwind_target(instrument_name):
+            _insert_guarded_key_signature(transposed_part)
         _apply_instrument_and_clef(transposed_part, instrument_name)
         transposed_part.metadata = metadata.Metadata()
         transposed_part.metadata.title = options.get("title", "Untitled")
         transposed_part.metadata.composer = options.get("composer", "")
-        transposed_part.insert(0, expressions.TextExpression(disclaimer))
+        if _is_woodwind_target(instrument_name) or _is_percussion_target(instrument_name):
+            _normalize_part_grid(transposed_part, str(options.get("quantize_grid", "1/8")))
+        else:
+            _flatten_part_to_primary_voice(transposed_part)
+            _rebalance_measure_durations(transposed_part)
         with warnings.catch_warnings():
             _suppress_known_music21_warnings()
             transposed_part = transposed_part.makeNotation(inPlace=False)
+        if _is_woodwind_target(instrument_name) or _is_percussion_target(instrument_name):
+            _normalize_part_grid(transposed_part, str(options.get("quantize_grid", "1/8")))
+        else:
+            _flatten_part_to_primary_voice(transposed_part)
+            _rebalance_measure_durations(transposed_part)
 
         part_xml = part_dir / f"{sanitize_filename(part_label)}.musicxml"
         transposed_part.write("musicxml", fp=str(part_xml))
@@ -570,6 +1175,15 @@ def build_score(
     if not score.parts:
         raise RuntimeError("No assigned parts produced notes. Check assignments and inputs.")
 
+    if disclaimer:
+        score.insert(0, expressions.TextExpression(disclaimer))
+    _pad_parts_to_common_length(score, str(options.get("quantize_grid", "1/8")))
+    _align_score_measures(score)
+    with warnings.catch_warnings():
+        _suppress_known_music21_warnings()
+        score = score.makeNotation(inPlace=False)
+    _pad_parts_to_common_length(score, str(options.get("quantize_grid", "1/8")))
+    _align_score_measures(score)
     with warnings.catch_warnings():
         _suppress_known_music21_warnings()
         score = score.makeNotation(inPlace=False)

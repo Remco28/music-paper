@@ -50,6 +50,16 @@ logs/
 *.pdf
 *.zip
 
+# Generated evaluation datasets (keep scripts/docs, ignore run artifacts)
+datasets/Gemini/
+datasets/labeling/*.csv
+datasets/labeling/*.md
+datasets/tuning_rounds/*/ratings.csv
+datasets/tuning_rounds/*/summary.json
+
+# Windows ADS metadata files
+*:Zone.Identifier
+
 # Environment and OS/editor files
 .env
 .env.*
