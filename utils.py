@@ -269,6 +269,9 @@ def write_run_manifest(
             "quantize_grid": options.get("quantize_grid"),
             "min_note_duration_beats": options.get("min_note_duration_beats"),
             "density_threshold": options.get("density_threshold"),
+            "fit_score": options.get("fit_score"),
+            "fit_label": options.get("fit_label"),
+            "recommended_profile": options.get("recommended_profile"),
         },
         "pipeline": pipeline,
         "outcome": {
@@ -372,6 +375,9 @@ def normalize_manifest_data(data: object) -> dict:
             "quantize_grid": options.get("quantize_grid"),
             "min_note_duration_beats": options.get("min_note_duration_beats"),
             "density_threshold": options.get("density_threshold"),
+            "fit_score": options.get("fit_score"),
+            "fit_label": options.get("fit_label", ""),
+            "recommended_profile": options.get("recommended_profile", ""),
         },
         "outcome": {
             "exported_part_count": _safe_int(outcome.get("exported_part_count"), 0),
@@ -461,6 +467,8 @@ def list_recent_run_summaries(runs_dir: Path, limit: int = 5) -> list[dict]:
                 "skipped_parts": _safe_int(outcome.get("skipped_part_count", 0)),
                 "zip_filename": outcome.get("zip_filename", ""),
                 "status": data.get("status", "unknown"),
+                "fit_label": options.get("fit_label", ""),
+                "recommended_profile": options.get("recommended_profile", ""),
             }
         )
         if len(summaries) >= limit:

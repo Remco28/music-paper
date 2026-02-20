@@ -316,6 +316,108 @@ def _apply_beginner_melody_filter(part_stream) -> dict[str, float]:
     return _playability_metrics(part_stream)
 
 
+def assess_song_fit(midis: dict[str, str], assignment: dict[str, str]) -> dict:
+    """Assess classroom fit from assigned melodic MIDI parts.
+
+    Returns a dict with:
+    - fit_score (0-100)
+    - fit_label (Good Fit / Borderline / Poor Fit)
+    - recommended_profile (Beginner / Easy Intermediate)
+    - reasons (plain-language list)
+    - part_metrics (per melodic part metrics)
+    """
+    from music21 import converter
+
+    percussion_tokens = ("Snare", "Bass Drum", "Percussion", "Auxiliary", "Timpani")
+    part_metrics: list[dict] = []
+
+    for stem_name, midi_path in midis.items():
+        instrument_name = str(assignment.get(stem_name, "") or "").strip()
+        if not instrument_name:
+            continue
+        if any(token in instrument_name for token in percussion_tokens):
+            continue
+        midi_file = Path(midi_path)
+        if not midi_file.exists():
+            continue
+
+        with warnings.catch_warnings():
+            _suppress_known_music21_warnings()
+            parsed = converter.parse(str(midi_file))
+        part_stream = parsed.parts[0] if parsed.parts else parsed
+        metrics = _playability_metrics(part_stream)
+        metrics["name"] = instrument_name
+        part_metrics.append(metrics)
+
+    if not part_metrics:
+        return {
+            "fit_score": 25,
+            "fit_label": "Poor Fit",
+            "recommended_profile": "Beginner",
+            "reasons": [
+                "No clear melodic parts were detected from current assignments.",
+                "Try different stem assignments or use a simpler song.",
+            ],
+            "part_metrics": [],
+        }
+
+    total_notes = sum(float(item["note_count"]) for item in part_metrics)
+    if total_notes <= 0:
+        total_notes = float(len(part_metrics))
+
+    weighted_accidental = sum(
+        float(item["accidental_density"]) * float(item["note_count"]) for item in part_metrics
+    ) / total_notes
+    weighted_leaps = sum(
+        float(item["large_leap_rate"]) * float(item["note_count"]) for item in part_metrics
+    ) / total_notes
+    weighted_short = sum(
+        float(item["short_note_rate"]) * float(item["note_count"]) for item in part_metrics
+    ) / total_notes
+    sparse_parts = sum(1 for item in part_metrics if float(item["note_count"]) < 24)
+    sparse_rate = sparse_parts / max(1, len(part_metrics))
+
+    penalty = (
+        (weighted_accidental * 38.0)
+        + (weighted_leaps * 32.0)
+        + (weighted_short * 24.0)
+        + (sparse_rate * 10.0)
+    )
+    fit_score = int(max(0, min(100, round(100.0 - penalty))))
+
+    if fit_score >= 70:
+        fit_label = "Good Fit"
+    elif fit_score >= 45:
+        fit_label = "Borderline"
+    else:
+        fit_label = "Poor Fit"
+
+    if fit_label == "Good Fit":
+        recommended_profile = "Easy Intermediate"
+    else:
+        recommended_profile = "Beginner"
+
+    reasons: list[str] = []
+    if weighted_short >= 0.45:
+        reasons.append("Many fast notes were detected, which can be hard for younger players.")
+    if weighted_accidental >= 0.25:
+        reasons.append("The melody uses many sharps/flats, which may reduce readability.")
+    if weighted_leaps >= 0.35:
+        reasons.append("Large pitch jumps appear often, which can hurt playability.")
+    if sparse_rate >= 0.5:
+        reasons.append("Some parts are sparse/noisy and may need reassignment.")
+    if not reasons:
+        reasons.append("The current assignments look classroom-friendly for this level.")
+
+    return {
+        "fit_score": fit_score,
+        "fit_label": fit_label,
+        "recommended_profile": recommended_profile,
+        "reasons": reasons,
+        "part_metrics": part_metrics,
+    }
+
+
 def build_score(
     midis: dict[str, str], assignment: dict[str, str], options: dict,
     run_dir: Path | None = None,

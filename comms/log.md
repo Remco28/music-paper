@@ -357,3 +357,6 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-20 12:26] [Architect]: POLICY UPDATE: Narrowed production target scope to beginner-focused classroom outcomes; added `docs/supported-input-policy.md`.
 [2026-02-20 12:26] [Developer]: IMPL DONE (UX Scope): Teacher simplification profile selector now exposes only `Beginner` and `Easy Intermediate`.
 [2026-02-20 12:26] [Architect]: SPEC READY: Added Phase 40 success-optimization spec `comms/tasks/2026-02-20-phase-40-fit-gating-and-success-optimization.md` (fit scoring + auto recommendation + two-pass + guardrails).
+[2026-02-20 12:49] [Developer]: IMPL DONE (Phase 40 Step 1/2): Added pre-export `Analyze Song Fit` flow with fit scoring (`Good Fit`/`Borderline`/`Poor Fit`) and plain-language rationale.
+[2026-02-20 12:49] [Developer]: IMPL DONE (Phase 40 Step 1/2): Added auto profile recommendation (`Beginner`/`Easy Intermediate`) with optional auto-apply on export and manifest persistence (`fit_score`, `fit_label`, `recommended_profile`).
+[2026-02-20 12:49] [Architect]: REVIEW PASS (Phase 40 Step 1/2): compile + smoke pass; run history and selected-run details now surface fit/recommendation metadata.

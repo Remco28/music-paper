@@ -25,6 +25,7 @@ from config import (
     YOUTUBE_DOMAINS,
 )
 from pipeline import (
+    assess_song_fit,
     build_score,
     download_or_convert_audio,
     render_pdfs,
@@ -93,10 +94,14 @@ def _init_state() -> None:
         "opt_quantize_grid": SIMPLIFY_PRESET["quantize_grid"],
         "opt_min_duration": float(SIMPLIFY_PRESET["min_note_duration_beats"]),
         "opt_density_threshold": int(SIMPLIFY_PRESET["density_threshold"]),
+        "opt_auto_apply_recommendation": True,
         "export_last_ok": False,
         "export_integrity_warning": "",
         "export_complexity_rows": [],
         "export_complexity_summary": "",
+        "fit_analysis": {},
+        "fit_analysis_signature": "",
+        "fit_analysis_profile_used": "",
         "history_input_filter": "all",
         "history_status_filter": "all",
         "history_warning_filter": "all",
@@ -187,6 +192,24 @@ def _clear_export_outputs() -> None:
     st.session_state.export_integrity_warning = ""
     st.session_state.export_complexity_rows = []
     st.session_state.export_complexity_summary = ""
+
+
+def _assigned_stems_signature(assigned_stems: dict[str, str]) -> str:
+    """Build deterministic signature for assigned stem set."""
+    pairs = [f"{name}:{path}" for name, path in sorted(assigned_stems.items())]
+    return "|".join(pairs)
+
+
+def _apply_profile_defaults(profile_name: str) -> None:
+    """Apply simplification defaults for the given profile to session options."""
+    defaults = SIMPLIFY_PROFILES.get(profile_name)
+    if not defaults:
+        return
+    st.session_state.opt_profile = profile_name
+    st.session_state.opt_profile_applied = profile_name
+    st.session_state.opt_quantize_grid = defaults["quantize_grid"]
+    st.session_state.opt_min_duration = float(defaults["min_note_duration_beats"])
+    st.session_state.opt_density_threshold = int(defaults["density_threshold"])
 
 
 def _assignment_guard_state(stems: dict, assignments: dict[str, str]) -> dict:
@@ -759,6 +782,8 @@ def _build_recent_runs_csv(records: list[dict]) -> str:
         "timestamp",
         "input_type",
         "input_value",
+        "fit_label",
+        "recommended_profile",
         "status",
         "exported_parts",
         "skipped_parts",
@@ -779,6 +804,8 @@ def _build_recent_runs_csv(records: list[dict]) -> str:
                 "timestamp": str(record.get("timestamp", "")),
                 "input_type": str(record.get("input_type", "")),
                 "input_value": str(record.get("input_value", "")),
+                "fit_label": str(record.get("fit_label", "")),
+                "recommended_profile": str(record.get("recommended_profile", "")),
                 "status": str(record.get("status", "")),
                 "exported_parts": int(record.get("exported_parts", 0)),
                 "skipped_parts": int(record.get("skipped_parts", 0)),
@@ -859,6 +886,8 @@ def _render_recent_runs_panel() -> None:
                     "timestamp": "",
                     "input_type": "",
                     "input_value": "",
+                    "fit_label": "",
+                    "recommended_profile": "",
                     "profile": "",
                     "simplify_enabled": False,
                     "exported_parts": 0,
@@ -892,6 +921,8 @@ def _render_recent_runs_panel() -> None:
                             "timestamp": str(data.get("timestamp", "")),
                             "input_type": str((data.get("input") or {}).get("type", "")),
                             "input_value": str((data.get("input") or {}).get("value", "")),
+                            "fit_label": str((data.get("options") or {}).get("fit_label", "")),
+                            "recommended_profile": str((data.get("options") or {}).get("recommended_profile", "")),
                             "profile": str((data.get("options") or {}).get("profile", "")),
                             "simplify_enabled": bool((data.get("options") or {}).get("simplify_enabled", False)),
                             "exported_parts": int(outcome.get("exported_part_count", 0)),
@@ -1064,6 +1095,7 @@ def _render_recent_runs_panel() -> None:
         for row in displayed_records[:5]:
             summary_lines.append(
                 f"- {row['run_id']} | status={row['status']} | "
+                f"fit={row.get('fit_label') or '-'} | rec={row.get('recommended_profile') or '-'} | "
                 f"parts={row['exported_parts']}/{row['skipped_parts']} | "
                 f"warnings={row['warning_count']} | "
                 f"warning_preview='{row['warning_preview'] or '-'}' | "
@@ -1106,6 +1138,8 @@ def _render_recent_runs_panel() -> None:
                     "Run ID": _shorten(str(row["run_id"]), 32),
                     "Time": _shorten(str(row["timestamp"]), 24),
                     "Input Source": f"{row['input_type']}: {_shorten(str(row['input_value']), 40)}",
+                    "Fit": _shorten(str(row.get("fit_label", "")) or "-", 14),
+                    "Recommended": _shorten(str(row.get("recommended_profile", "")) or "-", 18),
                     "Simplification": f"{_shorten(str(row['profile']), 16)} ({'on' if row['simplify_enabled'] else 'off'})",
                     "Run Outcome": status_labels.get(str(row.get("status", "unknown")), "Unknown"),
                     "Parts": f"{row['exported_parts']} exported / {row['skipped_parts']} skipped",
@@ -1160,6 +1194,15 @@ def _render_selected_run_details(run_id: str) -> None:
         f"- Simplification: `{options.get('profile', 'n/a')}` "
         f"(`{'on' if options.get('simplify_enabled', False) else 'off'}`)"
     )
+    fit_label = str(options.get("fit_label", "") or "")
+    fit_score = options.get("fit_score")
+    recommended_profile = str(options.get("recommended_profile", "") or "")
+    if fit_label:
+        st.markdown(
+            f"- Song Fit: `{fit_label}`"
+            f"{f' ({fit_score}/100)' if isinstance(fit_score, (int, float)) else ''}"
+            f"{f' | recommended `{recommended_profile}`' if recommended_profile else ''}"
+        )
     st.markdown(
         f"- Settings: grid `{options.get('quantize_grid', 'n/a')}`, "
         f"min duration `{options.get('min_note_duration_beats', 'n/a')}`, "
@@ -1470,6 +1513,57 @@ def _render_complexity_summary() -> None:
     st.table(table_rows)
 
 
+def _render_song_fit_panel(assigned_stems: dict[str, str]) -> None:
+    """Show pre-export song-fit analysis and recommendation controls."""
+    signature = _assigned_stems_signature(assigned_stems)
+    cached_signature = st.session_state.get("fit_analysis_signature", "")
+    cached = st.session_state.get("fit_analysis") if isinstance(st.session_state.get("fit_analysis"), dict) else {}
+
+    if st.button("Analyze Song Fit", use_container_width=True):
+        try:
+            if not st.session_state.get("midi_map") or cached_signature != signature:
+                with st.spinner("Analyzing song fit (transcribing assigned stems)..."):
+                    st.session_state.midi_map = transcribe_to_midi(assigned_stems, run_dir=_current_run_dir())
+            fit_analysis = assess_song_fit(st.session_state.midi_map, st.session_state.assignments)
+            st.session_state.fit_analysis = fit_analysis
+            st.session_state.fit_analysis_signature = signature
+            st.session_state.fit_analysis_profile_used = str(fit_analysis.get("recommended_profile", ""))
+        except Exception as exc:
+            _show_stage_error(
+                "Song fit analysis",
+                exc,
+                "Verify assignments and tool setup, then retry.",
+            )
+            return
+
+    if not cached or cached_signature != signature:
+        st.caption("Run `Analyze Song Fit` for a pre-export recommendation.")
+        return
+
+    label = str(cached.get("fit_label", ""))
+    score = int(cached.get("fit_score", 0))
+    recommendation = str(cached.get("recommended_profile", "") or "")
+    if label == "Good Fit":
+        st.success(f"Song Fit: {label} ({score}/100)")
+    elif label == "Borderline":
+        st.warning(f"Song Fit: {label} ({score}/100)")
+    else:
+        st.error(f"Song Fit: {label} ({score}/100)")
+
+    if recommendation:
+        st.info(f"Recommended profile: {recommendation}")
+    reasons = cached.get("reasons") or []
+    if isinstance(reasons, list):
+        for reason in reasons[:4]:
+            st.markdown(f"- {reason}")
+
+    st.checkbox(
+        "Auto-apply recommended profile at export",
+        key="opt_auto_apply_recommendation",
+        help="If enabled, export will use the recommendation from this fit analysis.",
+    )
+
+
 def _record_failed_run_manifest(
     run_dir: Path,
     run_id: str,
@@ -1508,8 +1602,17 @@ def _record_failed_run_manifest(
 def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, run_id: str) -> bool:
     """Execute the transcribe -> score -> PDF -> manifest -> ZIP pipeline."""
     try:
-        with st.spinner("Transcribing stems with Basic Pitch..."):
-            st.session_state.midi_map = transcribe_to_midi(assigned_stems, run_dir=run_dir)
+        midi_map = st.session_state.get("midi_map")
+        can_reuse = (
+            isinstance(midi_map, dict)
+            and set(midi_map.keys()) == set(assigned_stems.keys())
+            and all(Path(str(path)).exists() for path in midi_map.values())
+        )
+        if can_reuse:
+            st.caption("Reusing recent transcription output from fit analysis.")
+        else:
+            with st.spinner("Transcribing stems with Basic Pitch..."):
+                st.session_state.midi_map = transcribe_to_midi(assigned_stems, run_dir=run_dir)
     except Exception as exc:
         try:
             _record_failed_run_manifest(run_dir, run_id, options, "transcription", exc)
@@ -1698,10 +1801,34 @@ def _render_export_stage(options: dict) -> None:
     for message in guard["warnings"]:
         st.warning(message)
 
+    _render_song_fit_panel(assigned_stems)
+
     if st.button("Transcribe + Export ZIP", type="primary", use_container_width=True):
         if guard["assigned_count"] <= 0 or not assigned_stems:
             st.error("Assign at least one stem to an instrument before exporting.")
             return
+        run_options = dict(options)
+        signature = _assigned_stems_signature(assigned_stems)
+        fit = st.session_state.get("fit_analysis") if isinstance(st.session_state.get("fit_analysis"), dict) else {}
+        fit_signature = st.session_state.get("fit_analysis_signature", "")
+        if fit and fit_signature == signature:
+            run_options["fit_score"] = fit.get("fit_score")
+            run_options["fit_label"] = fit.get("fit_label")
+            run_options["recommended_profile"] = fit.get("recommended_profile")
+
+            recommended_profile = str(fit.get("recommended_profile", "") or "")
+            if (
+                bool(st.session_state.get("opt_auto_apply_recommendation", True))
+                and bool(run_options.get("simplify_enabled", False))
+                and recommended_profile in TEACHER_VISIBLE_PROFILES
+                and run_options.get("profile") != recommended_profile
+            ):
+                _apply_profile_defaults(recommended_profile)
+                run_options["profile"] = recommended_profile
+                run_options["quantize_grid"] = st.session_state.opt_quantize_grid
+                run_options["min_note_duration_beats"] = st.session_state.opt_min_duration
+                run_options["density_threshold"] = st.session_state.opt_density_threshold
+                st.info(f"Auto-applied recommended profile: {recommended_profile}")
         try:
             _clear_export_outputs()
             run_dir = _current_run_dir()
@@ -1709,7 +1836,7 @@ def _render_export_stage(options: dict) -> None:
                 st.error("No active run. Prepare audio input first.")
                 return
             st.session_state.export_last_ok = _run_export(
-                options, assigned_stems, run_dir, st.session_state.run_id
+                run_options, assigned_stems, run_dir, st.session_state.run_id
             )
         except Exception as exc:
             _show_stage_error(
