@@ -363,3 +363,6 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-20 13:08] [Developer]: IMPL DONE (Phase 40 Step 2/2): Added optional two-pass export mode that generates both `Beginner` and `Easy Intermediate` ZIP packages with explicit per-profile download buttons.
 [2026-02-20 13:08] [Developer]: IMPL DONE (Phase 40 Step 2/2): Added workflow snapshot fit-state indicator and tightened beginner playability gates by instrument family in pipeline.
 [2026-02-20 13:08] [Architect]: REVIEW PASS (Phase 40 Step 2/2): compile + smoke pass after two-pass flow + family-threshold gating updates.
+[2026-02-20 15:20] [Developer]: IMPL DONE (Phase 39 MVP): Added separate Tuning Lab app entrypoint `apps/tuning_lab.py` with round selection, embedded PDF review, auto-save rubric, progress, and resume-by-reviewer workflow.
+[2026-02-20 15:20] [Developer]: IMPL DONE (Phase 39 MVP): Added `scripts/generate_tuning_batch.py` and `scripts/score_tuning_round.py` plus runbook `docs/tuning-lab.md`.
+[2026-02-20 15:20] [Developer]: ROUND READY: Created first tuning round manifest at `datasets/tuning_rounds/cheers_phase40_round1/round_manifest.json` from two-pass Cheers exports.
