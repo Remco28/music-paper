@@ -882,7 +882,7 @@ def _beginner_playability_thresholds(instrument_name: str) -> dict[str, float]:
 
 
 def assess_song_fit(midis: dict[str, str], assignment: dict[str, str]) -> dict:
-    """Assess classroom fit from assigned melodic MIDI parts.
+    """Assess transcription feasibility from assigned melodic MIDI parts.
 
     Returns a dict with:
     - fit_score (0-100)
@@ -911,6 +911,21 @@ def assess_song_fit(midis: dict[str, str], assignment: dict[str, str]) -> dict:
             parsed = converter.parse(str(midi_file))
         part_stream = parsed.parts[0] if parsed.parts else parsed
         metrics = _playability_metrics(part_stream)
+        note_elements = list(part_stream.recurse().notes)
+        chord_count = sum(1 for item in note_elements if getattr(item, "isChord", False))
+        bucket_counts: dict[int, int] = {}
+        for item in note_elements:
+            try:
+                offset = float(item.getOffsetInHierarchy(part_stream))
+            except Exception:
+                continue
+            # 1/16-note buckets to estimate overlap/noise density
+            bucket = int(round(offset / 0.25))
+            bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
+        overlap_buckets = sum(1 for value in bucket_counts.values() if value > 1)
+        total_buckets = max(1, len(bucket_counts))
+        metrics["chord_rate"] = float(chord_count / max(1, len(note_elements)))
+        metrics["overlap_rate"] = float(overlap_buckets / total_buckets)
         metrics["name"] = instrument_name
         part_metrics.append(metrics)
 
@@ -918,10 +933,10 @@ def assess_song_fit(midis: dict[str, str], assignment: dict[str, str]) -> dict:
         return {
             "fit_score": 25,
             "fit_label": "Poor Fit",
-            "recommended_profile": "Beginner",
+            "recommended_profile": "Easy Intermediate",
             "reasons": [
                 "No clear melodic parts were detected from current assignments.",
-                "Try different stem assignments or use a simpler song.",
+                "Try different stem assignments or a cleaner source file.",
             ],
             "part_metrics": [],
         }
@@ -939,14 +954,23 @@ def assess_song_fit(midis: dict[str, str], assignment: dict[str, str]) -> dict:
     weighted_short = sum(
         float(item["short_note_rate"]) * float(item["note_count"]) for item in part_metrics
     ) / total_notes
+    weighted_chord = sum(
+        float(item.get("chord_rate", 0.0)) * float(item["note_count"]) for item in part_metrics
+    ) / total_notes
+    weighted_overlap = sum(
+        float(item.get("overlap_rate", 0.0)) * float(item["note_count"]) for item in part_metrics
+    ) / total_notes
     sparse_parts = sum(1 for item in part_metrics if float(item["note_count"]) < 24)
     sparse_rate = sparse_parts / max(1, len(part_metrics))
 
+    # Heavier weight on transcription stability/coverage, lighter on student playability.
     penalty = (
-        (weighted_accidental * 38.0)
-        + (weighted_leaps * 32.0)
-        + (weighted_short * 24.0)
-        + (sparse_rate * 10.0)
+        (weighted_overlap * 34.0)
+        + (weighted_chord * 26.0)
+        + (sparse_rate * 24.0)
+        + (weighted_short * 8.0)
+        + (weighted_accidental * 4.0)
+        + (weighted_leaps * 4.0)
     )
     fit_score = int(max(0, min(100, round(100.0 - penalty))))
 
@@ -957,22 +981,28 @@ def assess_song_fit(midis: dict[str, str], assignment: dict[str, str]) -> dict:
     else:
         fit_label = "Poor Fit"
 
-    if fit_label == "Good Fit":
-        recommended_profile = "Easy Intermediate"
-    else:
+    if fit_label == "Poor Fit":
         recommended_profile = "Beginner"
+    else:
+        recommended_profile = "Easy Intermediate"
 
     reasons: list[str] = []
-    if weighted_short >= 0.45:
-        reasons.append("Many fast notes were detected, which can be hard for younger players.")
-    if weighted_accidental >= 0.25:
-        reasons.append("The melody uses many sharps/flats, which may reduce readability.")
-    if weighted_leaps >= 0.35:
-        reasons.append("Large pitch jumps appear often, which can hurt playability.")
+    if sparse_rate >= 0.4:
+        reasons.append("Some assigned melodic parts are sparse, which can reduce transcription reliability.")
+    if weighted_overlap >= 0.22:
+        reasons.append("Frequent overlapping note attacks suggest noisy or unstable transcription output.")
+    if weighted_chord >= 0.16:
+        reasons.append("High stacked-note density suggests harmonic bleed in monophonic lines.")
+    if weighted_short >= 0.55:
+        reasons.append("Very dense short-note activity may indicate noisy transcription artifacts.")
+    if weighted_accidental >= 0.35:
+        reasons.append("High accidental density may indicate key ambiguity in detected melody.")
+    if weighted_leaps >= 0.50:
+        reasons.append("Large jump frequency is elevated and may signal unstable pitch tracking.")
     if sparse_rate >= 0.5:
-        reasons.append("Some parts are sparse/noisy and may need reassignment.")
+        reasons.append("Try alternative stem-to-instrument assignments for cleaner melodic extraction.")
     if not reasons:
-        reasons.append("The current assignments look classroom-friendly for this level.")
+        reasons.append("Assigned stems look feasible for clean transcription and score generation.")
 
     return {
         "fit_score": fit_score,
@@ -1151,9 +1181,6 @@ def build_score(
         elif _is_woodwind_target(instrument_name):
             _insert_guarded_key_signature(transposed_part)
         _apply_instrument_and_clef(transposed_part, instrument_name)
-        transposed_part.metadata = metadata.Metadata()
-        transposed_part.metadata.title = options.get("title", "Untitled")
-        transposed_part.metadata.composer = options.get("composer", "")
         if _is_woodwind_target(instrument_name) or _is_percussion_target(instrument_name):
             _normalize_part_grid(transposed_part, str(options.get("quantize_grid", "1/8")))
         else:
@@ -1168,8 +1195,14 @@ def build_score(
             _flatten_part_to_primary_voice(transposed_part)
             _rebalance_measure_durations(transposed_part)
 
+        part_export_score = stream.Score(id=f"part-{sanitize_filename(part_label)}")
+        part_export_score.metadata = metadata.Metadata()
+        part_export_score.metadata.title = options.get("title", "Untitled")
+        part_export_score.metadata.composer = options.get("composer", "")
+        part_export_score.insert(0, transposed_part)
+
         part_xml = part_dir / f"{sanitize_filename(part_label)}.musicxml"
-        transposed_part.write("musicxml", fp=str(part_xml))
+        part_export_score.write("musicxml", fp=str(part_xml))
         transposed_parts[part_label] = str(part_xml)
 
     if not score.parts:

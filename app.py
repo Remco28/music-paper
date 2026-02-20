@@ -125,6 +125,8 @@ def _init_state() -> None:
         "maintenance_keep_latest_n": 5,
         "maintenance_confirm_prune": False,
         "reset_confirm_temp_workspace": False,
+        "reset_workspace_notice": "",
+        "reset_workspace_clear_confirm_pending": False,
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -1528,13 +1530,12 @@ def _render_complexity_summary() -> None:
 
 
 def _render_song_fit_panel(assigned_stems: dict[str, str]) -> None:
-    """Show pre-export song-fit analysis and recommendation controls."""
+    """Show pre-export transcription-feasibility analysis and recommendation controls."""
     signature = _assigned_stems_signature(assigned_stems)
-    cached_signature = st.session_state.get("fit_analysis_signature", "")
-    cached = st.session_state.get("fit_analysis") if isinstance(st.session_state.get("fit_analysis"), dict) else {}
 
     if st.button("Analyze Song Fit", use_container_width=True):
         try:
+            cached_signature = st.session_state.get("fit_analysis_signature", "")
             if not st.session_state.get("midi_map") or cached_signature != signature:
                 with st.spinner("Analyzing song fit (transcribing assigned stems)..."):
                     st.session_state.midi_map = transcribe_to_midi(assigned_stems, run_dir=_current_run_dir())
@@ -1550,8 +1551,10 @@ def _render_song_fit_panel(assigned_stems: dict[str, str]) -> None:
             )
             return
 
+    cached_signature = st.session_state.get("fit_analysis_signature", "")
+    cached = st.session_state.get("fit_analysis") if isinstance(st.session_state.get("fit_analysis"), dict) else {}
     if not cached or cached_signature != signature:
-        st.caption("Run `Analyze Song Fit` for a pre-export recommendation.")
+        st.caption("Run `Analyze Song Fit` for a pre-export transcription-feasibility recommendation.")
         return
 
     label = str(cached.get("fit_label", ""))
@@ -1563,7 +1566,7 @@ def _render_song_fit_panel(assigned_stems: dict[str, str]) -> None:
         st.warning(f"Song Fit: {label} ({score}/100)")
     else:
         st.error(f"Song Fit: {label} ({score}/100)")
-        st.caption("Suggested next step: choose another song or keep Beginner with strict simplification.")
+        st.caption("Suggested next step: try different stem assignments or a cleaner source file.")
 
     if recommendation:
         st.info(f"Recommended profile: {recommendation}")
@@ -1963,10 +1966,17 @@ def main() -> None:
     st.caption("Local-only assistant for middle school concert band transcription.")
 
     _init_state()
+    if st.session_state.get("reset_workspace_clear_confirm_pending", False):
+        # Must run before rendering the checkbox widget for this key.
+        st.session_state.reset_confirm_temp_workspace = False
+        st.session_state.reset_workspace_clear_confirm_pending = False
     _render_workflow_snapshot()
 
     col1, col2 = st.columns([1, 1])
     with col1:
+        if st.session_state.reset_workspace_notice:
+            st.success(st.session_state.reset_workspace_notice)
+            st.session_state.reset_workspace_notice = ""
         has_stems = bool(st.session_state.stems)
         has_outputs = bool(st.session_state.musicxml_path or st.session_state.pdf_paths or st.session_state.zip_path)
         st.caption(
@@ -2017,8 +2027,9 @@ def main() -> None:
                     st.session_state[key] = ""
                 else:
                     st.session_state[key] = ""
-            st.session_state.reset_confirm_temp_workspace = False
-            st.success("Workspace reset.")
+            st.session_state.reset_workspace_notice = "Workspace reset."
+            st.session_state.reset_workspace_clear_confirm_pending = True
+            st.rerun()
 
     _render_preflight()
     _render_diagnostics_panel()
