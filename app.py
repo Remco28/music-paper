@@ -95,6 +95,7 @@ def _init_state() -> None:
         "opt_min_duration": float(SIMPLIFY_PRESET["min_note_duration_beats"]),
         "opt_density_threshold": int(SIMPLIFY_PRESET["density_threshold"]),
         "opt_auto_apply_recommendation": True,
+        "opt_two_pass_export": False,
         "export_last_ok": False,
         "export_integrity_warning": "",
         "export_complexity_rows": [],
@@ -102,6 +103,7 @@ def _init_state() -> None:
         "fit_analysis": {},
         "fit_analysis_signature": "",
         "fit_analysis_profile_used": "",
+        "multi_pass_exports": [],
         "history_input_filter": "all",
         "history_status_filter": "all",
         "history_warning_filter": "all",
@@ -192,6 +194,7 @@ def _clear_export_outputs() -> None:
     st.session_state.export_integrity_warning = ""
     st.session_state.export_complexity_rows = []
     st.session_state.export_complexity_summary = ""
+    st.session_state.multi_pass_exports = []
 
 
 def _assigned_stems_signature(assigned_stems: dict[str, str]) -> str:
@@ -560,6 +563,10 @@ def _render_simplification_guardrails(options: dict) -> None:
 
 def _render_run_summary() -> None:
     """Show a compact summary of the most recent export."""
+    if st.session_state.get("multi_pass_exports"):
+        count = len(st.session_state.multi_pass_exports)
+        st.info(f"Two-pass export complete: {count} profile package(s) generated.")
+        return
     if not st.session_state.run_id or not st.session_state.part_report:
         return
     exported = sum(1 for item in st.session_state.part_report if item.get("status") == "exported")
@@ -579,6 +586,12 @@ def _render_workflow_snapshot() -> None:
     )
     assignment_ready = assigned_count > 0
     export_ready = bool(st.session_state.export_last_ok and st.session_state.zip_path)
+    fit_ready = bool(st.session_state.get("fit_analysis")) and bool(
+        st.session_state.get("fit_analysis_signature")
+    )
+    fit_label = ""
+    if fit_ready:
+        fit_label = str((st.session_state.get("fit_analysis") or {}).get("fit_label", ""))
 
     def mark(ok: bool) -> str:
         return "[x]" if ok else "[ ]"
@@ -589,6 +602,7 @@ def _render_workflow_snapshot() -> None:
         f"{mark(input_ready)} input | "
         f"{mark(stems_ready)} stems | "
         f"{mark(assignment_ready)} assignments | "
+        f"{mark(fit_ready)} fit{f'({fit_label})' if fit_label else ''} | "
         f"{mark(export_ready)} export"
     )
 
@@ -1549,6 +1563,7 @@ def _render_song_fit_panel(assigned_stems: dict[str, str]) -> None:
         st.warning(f"Song Fit: {label} ({score}/100)")
     else:
         st.error(f"Song Fit: {label} ({score}/100)")
+        st.caption("Suggested next step: choose another song or keep Beginner with strict simplification.")
 
     if recommendation:
         st.info(f"Recommended profile: {recommendation}")
@@ -1562,6 +1577,19 @@ def _render_song_fit_panel(assigned_stems: dict[str, str]) -> None:
         key="opt_auto_apply_recommendation",
         help="If enabled, export will use the recommendation from this fit analysis.",
     )
+
+
+def _merge_fit_metadata(run_options: dict, assigned_stems: dict[str, str]) -> dict:
+    """Attach cached fit metadata when it matches current assigned stems."""
+    merged = dict(run_options)
+    signature = _assigned_stems_signature(assigned_stems)
+    fit = st.session_state.get("fit_analysis") if isinstance(st.session_state.get("fit_analysis"), dict) else {}
+    fit_signature = st.session_state.get("fit_analysis_signature", "")
+    if fit and fit_signature == signature:
+        merged["fit_score"] = fit.get("fit_score")
+        merged["fit_label"] = fit.get("fit_label")
+        merged["recommended_profile"] = fit.get("recommended_profile")
+    return merged
 
 
 def _record_failed_run_manifest(
@@ -1802,42 +1830,63 @@ def _render_export_stage(options: dict) -> None:
         st.warning(message)
 
     _render_song_fit_panel(assigned_stems)
+    two_pass_enabled = bool(options.get("simplify_enabled", False)) and bool(
+        st.checkbox(
+            "Two-pass export (generate Beginner and Easy Intermediate packages)",
+            key="opt_two_pass_export",
+            help="Runs both levels automatically and gives two ZIP downloads for side-by-side review.",
+        )
+    )
 
     if st.button("Transcribe + Export ZIP", type="primary", use_container_width=True):
         if guard["assigned_count"] <= 0 or not assigned_stems:
             st.error("Assign at least one stem to an instrument before exporting.")
             return
-        run_options = dict(options)
-        signature = _assigned_stems_signature(assigned_stems)
-        fit = st.session_state.get("fit_analysis") if isinstance(st.session_state.get("fit_analysis"), dict) else {}
-        fit_signature = st.session_state.get("fit_analysis_signature", "")
-        if fit and fit_signature == signature:
-            run_options["fit_score"] = fit.get("fit_score")
-            run_options["fit_label"] = fit.get("fit_label")
-            run_options["recommended_profile"] = fit.get("recommended_profile")
-
-            recommended_profile = str(fit.get("recommended_profile", "") or "")
-            if (
-                bool(st.session_state.get("opt_auto_apply_recommendation", True))
-                and bool(run_options.get("simplify_enabled", False))
-                and recommended_profile in TEACHER_VISIBLE_PROFILES
-                and run_options.get("profile") != recommended_profile
-            ):
-                _apply_profile_defaults(recommended_profile)
-                run_options["profile"] = recommended_profile
-                run_options["quantize_grid"] = st.session_state.opt_quantize_grid
-                run_options["min_note_duration_beats"] = st.session_state.opt_min_duration
-                run_options["density_threshold"] = st.session_state.opt_density_threshold
-                st.info(f"Auto-applied recommended profile: {recommended_profile}")
         try:
             _clear_export_outputs()
-            run_dir = _current_run_dir()
-            if not run_dir:
-                st.error("No active run. Prepare audio input first.")
-                return
-            st.session_state.export_last_ok = _run_export(
-                run_options, assigned_stems, run_dir, st.session_state.run_id
-            )
+            if two_pass_enabled:
+                pass_results: list[dict] = []
+                for pass_profile in ("Beginner", "Easy Intermediate"):
+                    run_dir = _new_run()
+                    pass_options = dict(options)
+                    _apply_profile_defaults(pass_profile)
+                    pass_options["profile"] = pass_profile
+                    pass_options["quantize_grid"] = st.session_state.opt_quantize_grid
+                    pass_options["min_note_duration_beats"] = st.session_state.opt_min_duration
+                    pass_options["density_threshold"] = st.session_state.opt_density_threshold
+                    pass_options = _merge_fit_metadata(pass_options, assigned_stems)
+                    ok = _run_export(pass_options, assigned_stems, run_dir, st.session_state.run_id)
+                    result_entry = {
+                        "profile": pass_profile,
+                        "run_id": st.session_state.run_id,
+                        "zip_path": st.session_state.zip_path if ok else "",
+                        "ok": ok,
+                    }
+                    pass_results.append(result_entry)
+                st.session_state.multi_pass_exports = pass_results
+                st.session_state.export_last_ok = any(item.get("ok") for item in pass_results)
+            else:
+                run_options = _merge_fit_metadata(dict(options), assigned_stems)
+                recommended_profile = str(run_options.get("recommended_profile", "") or "")
+                if (
+                    bool(st.session_state.get("opt_auto_apply_recommendation", True))
+                    and bool(run_options.get("simplify_enabled", False))
+                    and recommended_profile in TEACHER_VISIBLE_PROFILES
+                    and run_options.get("profile") != recommended_profile
+                ):
+                    _apply_profile_defaults(recommended_profile)
+                    run_options["profile"] = recommended_profile
+                    run_options["quantize_grid"] = st.session_state.opt_quantize_grid
+                    run_options["min_note_duration_beats"] = st.session_state.opt_min_duration
+                    run_options["density_threshold"] = st.session_state.opt_density_threshold
+                    st.info(f"Auto-applied recommended profile: {recommended_profile}")
+                run_dir = _current_run_dir()
+                if not run_dir:
+                    st.error("No active run. Prepare audio input first.")
+                    return
+                st.session_state.export_last_ok = _run_export(
+                    run_options, assigned_stems, run_dir, st.session_state.run_id
+                )
         except Exception as exc:
             _show_stage_error(
                 "Export pipeline",
@@ -1853,8 +1902,9 @@ def _render_export_stage(options: dict) -> None:
             try:
                 _clear_export_outputs()
                 new_run_dir = _new_run()  # updates session_state.run_id
+                rerun_options = _merge_fit_metadata(dict(options), assigned_stems)
                 st.session_state.export_last_ok = _run_export(
-                    options, assigned_stems, new_run_dir, st.session_state.run_id
+                    rerun_options, assigned_stems, new_run_dir, st.session_state.run_id
                 )
             except Exception as exc:
                 _show_stage_error(
@@ -1888,6 +1938,23 @@ def _render_export_stage(options: dict) -> None:
                 mime="application/zip",
                 use_container_width=True,
             )
+        multi_pass = st.session_state.get("multi_pass_exports") or []
+        if isinstance(multi_pass, list) and multi_pass:
+            st.markdown("**Two-Pass Packages**")
+            for entry in multi_pass:
+                profile_name = str(entry.get("profile", "Profile"))
+                run_id = str(entry.get("run_id", ""))
+                zip_path = Path(str(entry.get("zip_path", "")))
+                if not zip_path.exists():
+                    st.warning(f"{profile_name}: export failed or ZIP missing (run {run_id}).")
+                    continue
+                st.download_button(
+                    f"Download {profile_name} ZIP ({zip_path.name})",
+                    data=zip_path.read_bytes(),
+                    file_name=zip_path.name,
+                    mime="application/zip",
+                    use_container_width=True,
+                )
 
 
 def main() -> None:
@@ -1935,14 +2002,18 @@ def main() -> None:
                 "export_integrity_warning",
                 "export_complexity_rows",
                 "export_complexity_summary",
+                "fit_analysis",
+                "fit_analysis_signature",
+                "fit_analysis_profile_used",
+                "multi_pass_exports",
             ):
-                if key in ("stems", "assignments", "midi_map", "score_data"):
+                if key in ("stems", "assignments", "midi_map", "score_data", "fit_analysis"):
                     st.session_state[key] = {}
-                elif key in ("pdf_paths", "part_report", "export_complexity_rows"):
+                elif key in ("pdf_paths", "part_report", "export_complexity_rows", "multi_pass_exports"):
                     st.session_state[key] = []
                 elif key == "export_last_ok":
                     st.session_state[key] = False
-                elif key in ("export_integrity_warning", "export_complexity_summary"):
+                elif key in ("export_integrity_warning", "export_complexity_summary", "fit_analysis_signature", "fit_analysis_profile_used"):
                     st.session_state[key] = ""
                 else:
                     st.session_state[key] = ""

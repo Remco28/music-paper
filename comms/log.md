@@ -360,3 +360,6 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-20 12:49] [Developer]: IMPL DONE (Phase 40 Step 1/2): Added pre-export `Analyze Song Fit` flow with fit scoring (`Good Fit`/`Borderline`/`Poor Fit`) and plain-language rationale.
 [2026-02-20 12:49] [Developer]: IMPL DONE (Phase 40 Step 1/2): Added auto profile recommendation (`Beginner`/`Easy Intermediate`) with optional auto-apply on export and manifest persistence (`fit_score`, `fit_label`, `recommended_profile`).
 [2026-02-20 12:49] [Architect]: REVIEW PASS (Phase 40 Step 1/2): compile + smoke pass; run history and selected-run details now surface fit/recommendation metadata.
+[2026-02-20 13:08] [Developer]: IMPL DONE (Phase 40 Step 2/2): Added optional two-pass export mode that generates both `Beginner` and `Easy Intermediate` ZIP packages with explicit per-profile download buttons.
+[2026-02-20 13:08] [Developer]: IMPL DONE (Phase 40 Step 2/2): Added workflow snapshot fit-state indicator and tightened beginner playability gates by instrument family in pipeline.
+[2026-02-20 13:08] [Architect]: REVIEW PASS (Phase 40 Step 2/2): compile + smoke pass after two-pass flow + family-threshold gating updates.

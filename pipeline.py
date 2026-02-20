@@ -316,6 +316,19 @@ def _apply_beginner_melody_filter(part_stream) -> dict[str, float]:
     return _playability_metrics(part_stream)
 
 
+def _beginner_playability_thresholds(instrument_name: str) -> dict[str, float]:
+    """Return beginner gate thresholds tuned by instrument family."""
+    name = str(instrument_name or "")
+    strict_melody_tokens = ("Flute", "Clarinet", "Sax", "Trumpet", "Horn", "Oboe")
+    lower_voice_tokens = ("Tuba", "Trombone", "Euphonium", "Bassoon", "Bass Clarinet")
+
+    if any(token in name for token in strict_melody_tokens):
+        return {"accidental_density": 0.24, "large_leap_rate": 0.34, "short_note_rate": 0.45}
+    if any(token in name for token in lower_voice_tokens):
+        return {"accidental_density": 0.33, "large_leap_rate": 0.42, "short_note_rate": 0.54}
+    return {"accidental_density": 0.30, "large_leap_rate": 0.40, "short_note_rate": 0.50}
+
+
 def assess_song_fit(midis: dict[str, str], assignment: dict[str, str]) -> dict:
     """Assess classroom fit from assigned melodic MIDI parts.
 
@@ -511,12 +524,13 @@ def build_score(
                 token in instrument_name for token in ("Snare", "Bass Drum", "Percussion")
             ):
                 metrics = _apply_beginner_melody_filter(part_stream)
+                limits = _beginner_playability_thresholds(instrument_name)
                 if (
                     metrics["note_count"] > 0
                     and (
-                        metrics["accidental_density"] > 0.35
-                        or metrics["large_leap_rate"] > 0.45
-                        or metrics["short_note_rate"] > 0.55
+                        metrics["accidental_density"] > limits["accidental_density"]
+                        or metrics["large_leap_rate"] > limits["large_leap_rate"]
+                        or metrics["short_note_rate"] > limits["short_note_rate"]
                     )
                 ):
                     skipped_parts.append(
