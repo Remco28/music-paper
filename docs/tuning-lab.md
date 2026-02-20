@@ -16,6 +16,19 @@ Use existing successful runs to generate a round manifest:
 Output:
 - `datasets/tuning_rounds/<round_id>/round_manifest.json`
 
+### Woodwinds Focus Example (Clarinet/Sax only)
+If you want students to review only clarinet/sax outputs:
+
+```bash
+./venv/bin/python scripts/generate_tuning_batch.py \
+  --round-id woodwinds_round1 \
+  --limit-runs 80 \
+  --include-part-keyword clarinet \
+  --include-part-keyword sax \
+  --allowed-profile Beginner \
+  --allowed-profile "Easy Intermediate"
+```
+
 ## 2) Launch Tuning Lab App
 
 ```bash

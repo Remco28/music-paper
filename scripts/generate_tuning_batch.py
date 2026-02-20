@@ -33,6 +33,18 @@ def _parse_args() -> argparse.Namespace:
         default=2,
         help="When --run-id is omitted, include this many newest successful runs.",
     )
+    parser.add_argument(
+        "--include-part-keyword",
+        action="append",
+        default=[],
+        help="Only include exported parts whose names contain this token (case-insensitive). Repeatable.",
+    )
+    parser.add_argument(
+        "--allowed-profile",
+        action="append",
+        default=[],
+        help="Only include runs with matching profile names (case-insensitive). Repeatable.",
+    )
     return parser.parse_args()
 
 
@@ -73,6 +85,9 @@ def main() -> int:
     round_dir = out_root / round_id
     round_dir.mkdir(parents=True, exist_ok=True)
 
+    part_keywords = [token.strip().lower() for token in args.include_part_keyword if token.strip()]
+    allowed_profiles = {token.strip().lower() for token in args.allowed_profile if token.strip()}
+
     samples: list[dict] = []
     sample_index = 1
     for run_id in run_ids:
@@ -81,6 +96,9 @@ def main() -> int:
         if not data:
             continue
         options = data.get("options") or {}
+        profile_name = str(options.get("profile", ""))
+        if allowed_profiles and profile_name.strip().lower() not in allowed_profiles:
+            continue
         for part in data.get("parts") or []:
             if not isinstance(part, dict):
                 continue
@@ -89,14 +107,17 @@ def main() -> int:
             pdf_path = str(part.get("path", ""))
             if not pdf_path or not Path(pdf_path).exists():
                 continue
+            part_name = str(part.get("name", ""))
+            if part_keywords and not any(token in part_name.lower() for token in part_keywords):
+                continue
             sample_id = f"{round_id}_S{sample_index:03d}"
             sample_index += 1
             samples.append(
                 {
                     "sample_id": sample_id,
                     "run_id": run_id,
-                    "profile": str(options.get("profile", "")),
-                    "part_name": str(part.get("name", "")),
+                    "profile": profile_name,
+                    "part_name": part_name,
                     "pdf_path": pdf_path,
                     "params": {
                         "profile": options.get("profile"),

@@ -366,3 +366,6 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-20 15:20] [Developer]: IMPL DONE (Phase 39 MVP): Added separate Tuning Lab app entrypoint `apps/tuning_lab.py` with round selection, embedded PDF review, auto-save rubric, progress, and resume-by-reviewer workflow.
 [2026-02-20 15:20] [Developer]: IMPL DONE (Phase 39 MVP): Added `scripts/generate_tuning_batch.py` and `scripts/score_tuning_round.py` plus runbook `docs/tuning-lab.md`.
 [2026-02-20 15:20] [Developer]: ROUND READY: Created first tuning round manifest at `datasets/tuning_rounds/cheers_phase40_round1/round_manifest.json` from two-pass Cheers exports.
+[2026-02-20 10:58] [Architect]: SCOPE UPDATE (Tuning Lab): Re-focused evaluation to clarinet/sax reviewer strengths; no prior round data preservation required.
+[2026-02-20 10:58] [Developer]: IMPL DONE (Tuning Lab Batch Filters): Added `--include-part-keyword` and `--allowed-profile` filters to `scripts/generate_tuning_batch.py`.
+[2026-02-20 10:58] [Developer]: ROUND READY: Created `datasets/tuning_rounds/woodwinds_round1/round_manifest.json` with clarinet/sax-only samples and Beginner/Easy Intermediate profiles.
