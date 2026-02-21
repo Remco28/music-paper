@@ -15,6 +15,7 @@
 - MVP finalization status: `docs/mvp-finalization-2026-02-19.md`
 - Post-MVP backlog: `docs/post-mvp-backlog.md`
 - Tuning strategy baseline: `docs/tuning-lab-strategy-2026-02-20.md`
+- Musicality strategy baseline: `docs/musicality-lab-strategy-2026-02-21.md`
 - Tuning Lab implementation spec: `comms/tasks/2026-02-20-phase-39-tuning-lab-mvp-spec.md`
 - Supported input policy: `docs/supported-input-policy.md`
 - Success optimization spec: `comms/tasks/2026-02-20-phase-40-fit-gating-and-success-optimization.md`

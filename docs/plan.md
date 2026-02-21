@@ -30,6 +30,8 @@ Primary technical goals:
 4. Basic phrasing support (breath-friendly segmentation/articulation heuristics).
 5. Keep score math/monophony guarantees intact while improving musical feel.
 
+Detailed strategy: `docs/musicality-lab-strategy-2026-02-21.md`
+
 ### Acceptance Direction for Next Phase
 - Output should remain structurally valid and transposition-correct.
 - Beginner/Easy Intermediate notation must be musically plausible to student performers, not only mathematically valid.
