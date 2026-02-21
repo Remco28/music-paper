@@ -6,6 +6,10 @@ Run fast automated ranking of candidate variants, then capture lightweight A/B v
 ## 1) Generate Candidate Runs
 Use the production app as usual to generate multiple run variants for the same song.
 
+Benchmark source-of-truth:
+- `docs/musicality-benchmark-set-v1.md`
+- `docs/templates/phase42_benchmark_set_v1.template.json`
+
 Recommendation:
 - keep assignment map fixed
 - vary one parameter family at a time

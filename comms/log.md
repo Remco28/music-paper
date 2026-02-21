@@ -395,3 +395,5 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-21 00:22] [Developer]: IMPL DONE (Phase 41): Added `scripts/musicality_score.py`, `scripts/musicality_eval_batch.py`, `apps/musicality_lab.py`, `docs/musicality-lab-runbook.md`; added `variant_id` manifest support; added pipeline `evaluate_variant()` entrypoint.
 [2026-02-21 00:22] [Developer]: VALIDATION EVIDENCE (Phase 41): py_compile PASS for modified modules; `musicality_eval_batch.py` smoke run produced deterministic round artifacts with 5 candidates and metric breakdowns.
 [2026-02-21 00:23] [Architect]: REVIEW PASS (Phase 41 foundation): Acceptance criteria met for v1 slice (batch ranking artifacts, metric breakdown visibility, A/B vote UI persistence contract, round-scoped reproducibility). Residual risk: metric formula tuning and benchmark diversity remain next-phase work.
+[2026-02-21 00:28] [Architect]: BENCHMARK SET FINALIZED: Added 6-song Musicality Benchmark Set v1 to `docs/musicality-benchmark-set-v1.md` (includes Lean on Me easy/clean control).
+[2026-02-21 00:29] [Developer]: TEMPLATE READY: Added `datasets/musicality_rounds/phase42_benchmark_set_v1.template.json` for baseline/candidate run tracking.

@@ -1,0 +1,61 @@
+{
+  "template_name": "phase42_benchmark_set_v1",
+  "created_at": "2026-02-21T00:30:00",
+  "notes": "Fill baseline_run_id and candidate_run_ids after generating runs for each song.",
+  "songs": [
+    {
+      "id": "from_the_start",
+      "title": "From The Start",
+      "artist": "Laufey",
+      "url": "https://www.youtube.com/watch?v=lSD_L-xic9o",
+      "role": "swing_groove_key_ambiguity_stress",
+      "baseline_run_id": "",
+      "candidate_run_ids": []
+    },
+    {
+      "id": "just_the_way_you_are",
+      "title": "Just The Way You Are",
+      "artist": "Bruno Mars",
+      "url": "https://www.youtube.com/watch?v=u7XjPmN-tHw",
+      "role": "pop_melodic_baseline",
+      "baseline_run_id": "",
+      "candidate_run_ids": []
+    },
+    {
+      "id": "shut_up_and_dance",
+      "title": "Shut Up and Dance",
+      "artist": "WALK THE MOON",
+      "url": "https://www.youtube.com/watch?v=nbcCG7PkI18",
+      "role": "dense_upbeat_rhythm_stress",
+      "baseline_run_id": "",
+      "candidate_run_ids": []
+    },
+    {
+      "id": "seven_nation_army",
+      "title": "Seven Nation Army",
+      "artist": "The White Stripes",
+      "url": "https://www.youtube.com/watch?v=0J2QdDbelmY",
+      "role": "simple_riff_control_anchor",
+      "baseline_run_id": "",
+      "candidate_run_ids": []
+    },
+    {
+      "id": "any_way_you_want_it",
+      "title": "Any Way You Want It",
+      "artist": "Journey",
+      "url": "https://www.youtube.com/watch?v=kLDVTfQGDe4",
+      "role": "classic_rock_complexity_stress",
+      "baseline_run_id": "",
+      "candidate_run_ids": []
+    },
+    {
+      "id": "lean_on_me",
+      "title": "Lean on Me",
+      "artist": "Bill Withers",
+      "url": "https://www.youtube.com/watch?v=fOZ-MySzAac",
+      "role": "easy_clean_control",
+      "baseline_run_id": "",
+      "candidate_run_ids": []
+    }
+  ]
+}

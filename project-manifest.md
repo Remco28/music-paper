@@ -17,6 +17,8 @@
 - Tuning strategy baseline: `docs/tuning-lab-strategy-2026-02-20.md`
 - Musicality strategy baseline: `docs/musicality-lab-strategy-2026-02-21.md`
 - Musicality runbook: `docs/musicality-lab-runbook.md`
+- Musicality benchmark set (v1): `docs/musicality-benchmark-set-v1.md`
+- Phase 42 benchmark template: `docs/templates/phase42_benchmark_set_v1.template.json`
 - Musicality Lab foundation spec: `comms/tasks/2026-02-21-phase-41-musicality-lab-v1-foundation-spec.md`
 - Tuning Lab implementation spec: `comms/tasks/2026-02-20-phase-39-tuning-lab-mvp-spec.md`
 - Supported input policy: `docs/supported-input-policy.md`
