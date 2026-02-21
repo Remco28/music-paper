@@ -1632,6 +1632,8 @@ def _record_failed_run_manifest(
 
 def _run_export(options: dict, assigned_stems: dict[str, str], run_dir: Path, run_id: str) -> bool:
     """Execute the transcribe -> score -> PDF -> manifest -> ZIP pipeline."""
+    options = dict(options)
+    options.setdefault("variant_id", run_id)
     try:
         midi_map = st.session_state.get("midi_map")
         can_reuse = (

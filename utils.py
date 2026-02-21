@@ -265,6 +265,7 @@ def write_run_manifest(
         "input": {"type": source_type, "value": source_value},
         "options": {
             "profile": options.get("profile"),
+            "variant_id": options.get("variant_id"),
             "simplify_enabled": bool(options.get("simplify_enabled", False)),
             "quantize_grid": options.get("quantize_grid"),
             "min_note_duration_beats": options.get("min_note_duration_beats"),

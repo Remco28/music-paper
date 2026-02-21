@@ -1293,3 +1293,22 @@ def render_pdfs(score_data: dict[str, str | dict[str, str]], run_id: str | None 
     if len(rendered) == 1:
         raise RuntimeError("No non-empty parts were rendered.")
     return {"paths": rendered, "part_report": part_report}
+
+
+def evaluate_variant(
+    midis: dict[str, str],
+    assignment: dict[str, str],
+    options: dict,
+    run_dir: Path | None = None,
+    run_id: str | None = None,
+) -> dict:
+    """Programmatic variant evaluation entrypoint (UI-independent).
+
+    Runs score build + PDF rendering for a provided variant configuration.
+    Returns:
+      - score_data (build_score output)
+      - render (render_pdfs output)
+    """
+    score_data = build_score(midis=midis, assignment=assignment, options=options, run_dir=run_dir)
+    render = render_pdfs(score_data=score_data, run_id=run_id)
+    return {"score_data": score_data, "render": render}

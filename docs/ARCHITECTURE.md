@@ -6,6 +6,7 @@ This document is the short system map for the MVP. It describes component bounda
 
 ### Core Services
 - **Streamlit App** (`app.py`) - Local browser UI for input, options, assignment, progress, and download.
+- **Musicality Lab App** (`apps/musicality_lab.py`) - Variant ranking UI with lightweight A/B capture.
 - **Pipeline Engine** (`pipeline.py`) - Orchestrates audio normalization, stem separation, transcription, score build, and export.
 - **Musicality Layer** (`pipeline.py`, rule-based) - Post-transcription shaping for classroom-readable rhythm/key/phrasing behavior.
 - **Config Layer** (`config.py`) - Central constants for paths, instrument catalog, and tool settings.
@@ -19,11 +20,16 @@ This document is the short system map for the MVP. It describes component bounda
 - **music21** - Score assembly and transposition.
 - **MuseScore CLI** - PDF rendering from MusicXML.
 
+### Evaluation Tooling
+- **Batch evaluator** (`scripts/musicality_eval_batch.py`) - Produces round-scoped ranking artifacts from run variants.
+- **Metric module** (`scripts/musicality_score.py`) - Onset/pitch/rhythm/fragmentation scoring with hard-gate checks.
+
 ### Storage / Runtime Directories
 - **Temporary working files**: `temp/`
 - **Run-scoped work dirs**: `temp/runs/<run_id>/` (audio/stems/midi/musicxml + manifest)
 - **Exported PDFs**: `outputs/<run_id>/` (run-scoped to avoid cross-run collisions)
 - **ZIP artifacts**: `downloads/`
+- **Musicality rounds**: `datasets/musicality_rounds/<round_id>/` (`round_manifest.json`, `auto_scores.json`, `ab_votes.csv`, `summary.json`)
 - **No remote data store** and **no cloud services** in MVP.
 
 ## Process Architecture
@@ -118,6 +124,8 @@ Each integration must surface actionable errors to the UI stage where it fails.
 
 ## Related Docs
 - Plan: `docs/plan.md`
+- Musicality strategy: `docs/musicality-lab-strategy-2026-02-21.md`
+- Musicality runbook: `docs/musicality-lab-runbook.md`
 - Manifest: `project-manifest.md`
 - Current phase spec: `comms/tasks/2026-02-19-phase-36-documentation-and-handoff-consolidation.md`
 - Benchmark worksheet: `docs/benchmark-3-song-pass.md`

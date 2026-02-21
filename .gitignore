@@ -56,6 +56,7 @@ datasets/labeling/*.csv
 datasets/labeling/*.md
 datasets/tuning_rounds/*/ratings.csv
 datasets/tuning_rounds/*/summary.json
+datasets/musicality_rounds/
 
 # Windows ADS metadata files
 *:Zone.Identifier
