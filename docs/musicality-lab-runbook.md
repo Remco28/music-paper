@@ -2,6 +2,7 @@
 
 ## Goal
 Run fast automated ranking of candidate variants, then capture lightweight A/B votes on top candidates.
+Preferred workflow is now UI-first (minimal CLI).
 
 ## 1) Generate Candidate Runs
 Use the production app as usual to generate multiple run variants for the same song.
@@ -15,37 +16,25 @@ Recommendation:
 - vary one parameter family at a time
 - generate at least 5 variants per round
 
-## 2) Score a Musicality Round
-Run:
-
-```bash
-./venv/bin/python scripts/musicality_eval_batch.py \
-  --round-id mygirl_musicality_round1 \
-  --run-id <run_id_1> \
-  --run-id <run_id_2> \
-  --run-id <run_id_3> \
-  --run-id <run_id_4> \
-  --run-id <run_id_5>
-```
-
-Outputs in `datasets/musicality_rounds/<round_id>/`:
-- `round_manifest.json`
-- `auto_scores.json`
-- `summary.json`
-- `ab_votes.csv`
-
-## 3) Review in Musicality Lab UI
-Run:
+## 2) Launch Musicality Lab (UI)
 
 ```bash
 ./venv/bin/streamlit run apps/musicality_lab.py
 ```
 
 In the UI:
-1. Select round
-2. Inspect ranked candidates
-3. Compare A/B top candidates
-4. Record vote
+1. Choose benchmark song and baseline/candidate runs.
+2. Click **Create + Score Round** (writes round artifacts automatically).
+3. Inspect ranking table + top candidate.
+4. Use A/B queue to record votes.
+5. Click **Write Decision Summary**.
+
+Round artifacts are stored in `datasets/musicality_rounds/<round_id>/`:
+- `round_manifest.json`
+- `auto_scores.json`
+- `summary.json`
+- `ab_votes.csv`
+- `decision_summary.json` (after UI decision export)
 
 ## 4) Interpreting Scores
 Composite score:
@@ -68,3 +57,7 @@ Promote a candidate only when:
 ## 6) Notes
 - This loop complements Tuning Lab; it does not replace it.
 - If automatic score conflicts with human results, prefer human decision for default profile changes.
+- CLI fallback remains available for scripting:
+```bash
+./venv/bin/python scripts/musicality_eval_batch.py --round-id <round> --run-id <id> --run-id <id> ...
+```

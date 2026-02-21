@@ -397,3 +397,6 @@ PHASE 3 IMPLEMENTATION NOTES:
 [2026-02-21 00:23] [Architect]: REVIEW PASS (Phase 41 foundation): Acceptance criteria met for v1 slice (batch ranking artifacts, metric breakdown visibility, A/B vote UI persistence contract, round-scoped reproducibility). Residual risk: metric formula tuning and benchmark diversity remain next-phase work.
 [2026-02-21 00:28] [Architect]: BENCHMARK SET FINALIZED: Added 6-song Musicality Benchmark Set v1 to `docs/musicality-benchmark-set-v1.md` (includes Lean on Me easy/clean control).
 [2026-02-21 00:29] [Developer]: TEMPLATE READY: Added `datasets/musicality_rounds/phase42_benchmark_set_v1.template.json` for baseline/candidate run tracking.
+[2026-02-21 00:40] [Developer]: IMPL DONE (Musicality Lab UX): Added guided UI workflow in `apps/musicality_lab.py` for benchmark-song round building, one-click scoring, A/B queue voting, and decision summary export.
+[2026-02-21 00:40] [Developer]: IMPL DONE (Batch API): Exposed `run_batch()` in `scripts/musicality_eval_batch.py` so Musicality Lab can score rounds without shell commands.
+[2026-02-21 00:41] [Developer]: DOCS UPDATED: `docs/musicality-lab-runbook.md` now reflects UI-first workflow with CLI fallback.

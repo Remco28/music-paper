@@ -115,16 +115,23 @@ def _candidate_payload(run_dir: Path, run_manifest: dict) -> dict:
     }
 
 
-def main() -> int:
-    args = _parse_args()
-    runs_dir = Path(args.runs_dir)
-    round_id = args.round_id.strip() or f"musicality_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    round_dir = Path(args.out_root) / round_id
+def run_batch(
+    run_ids: list[str],
+    runs_dir: Path | str = "temp/runs",
+    out_root: Path | str = "datasets/musicality_rounds",
+    round_id: str = "",
+    top_n: int = 3,
+) -> dict:
+    """Run one musicality scoring batch and write round artifacts."""
+    runs_dir = Path(runs_dir)
+    out_root = Path(out_root)
+    resolved_round_id = round_id.strip() or f"musicality_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    round_dir = out_root / resolved_round_id
     round_dir.mkdir(parents=True, exist_ok=True)
 
     candidates: list[dict] = []
     missing_runs: list[str] = []
-    for run_id in args.run_id:
+    for run_id in run_ids:
         manifest_path = runs_dir / run_id / "manifest.json"
         data = _safe_load_json(manifest_path)
         if not data:
@@ -133,7 +140,7 @@ def main() -> int:
         candidates.append(_candidate_payload(manifest_path.parent, data))
 
     if not candidates:
-        raise SystemExit("No valid candidate runs were loaded.")
+        raise RuntimeError("No valid candidate runs were loaded.")
 
     candidates.sort(
         key=lambda item: (
@@ -146,24 +153,24 @@ def main() -> int:
         item["rank"] = idx
 
     round_manifest = {
-        "round_id": round_id,
+        "round_id": resolved_round_id,
         "created_at": datetime.now().isoformat(timespec="seconds"),
-        "runs_requested": list(args.run_id),
+        "runs_requested": list(run_ids),
         "runs_missing": missing_runs,
         "candidate_count": len(candidates),
         "score_formula": "0.40*onset + 0.30*pitch + 0.20*rhythm - 0.10*fragmentation_penalty",
     }
     auto_scores = {
-        "round_id": round_id,
+        "round_id": resolved_round_id,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "candidates": candidates,
     }
-    promoted = [item for item in candidates if item.get("hard_gate_pass")][: max(1, int(args.top_n))]
+    promoted = [item for item in candidates if item.get("hard_gate_pass")][: max(1, int(top_n))]
     summary = {
-        "round_id": round_id,
+        "round_id": resolved_round_id,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "winner": promoted[0] if promoted else candidates[0],
-        "top_candidates": promoted if promoted else candidates[: max(1, int(args.top_n))],
+        "top_candidates": promoted if promoted else candidates[: max(1, int(top_n))],
         "hard_gate_pass_count": sum(1 for item in candidates if item.get("hard_gate_pass")),
         "candidate_count": len(candidates),
     }
@@ -177,14 +184,35 @@ def main() -> int:
         votes_path.write_text(
             "round_id,timestamp,reviewer_id,candidate_a,candidate_b,winner,confidence,notes\n"
         )
+    return {
+        "round_id": resolved_round_id,
+        "round_dir": str(round_dir),
+        "candidate_count": len(candidates),
+        "missing_runs": missing_runs,
+    }
 
-    print(f"Musicality round created: {round_id}")
+
+def main() -> int:
+    args = _parse_args()
+    try:
+        result = run_batch(
+            run_ids=list(args.run_id),
+            runs_dir=Path(args.runs_dir),
+            out_root=Path(args.out_root),
+            round_id=args.round_id,
+            top_n=int(args.top_n),
+        )
+    except RuntimeError as exc:
+        raise SystemExit(str(exc))
+
+    round_dir = Path(result["round_dir"])
+    print(f"Musicality round created: {result['round_id']}")
     print(f"- manifest: {round_dir / 'round_manifest.json'}")
     print(f"- auto scores: {round_dir / 'auto_scores.json'}")
     print(f"- summary: {round_dir / 'summary.json'}")
-    print(f"- candidates: {len(candidates)}")
-    if missing_runs:
-        print(f"- missing runs: {', '.join(missing_runs)}")
+    print(f"- candidates: {result['candidate_count']}")
+    if result["missing_runs"]:
+        print(f"- missing runs: {', '.join(result['missing_runs'])}")
     return 0
 
 
